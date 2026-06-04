@@ -30,9 +30,7 @@ function Chip({ active, onClick, children }: ChipProps) {
       onClick={onClick}
       aria-pressed={active}
       className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
-        active
-          ? 'bg-ink text-canvas shadow-sm'
-          : 'bg-surface text-muted border border-line hover:text-ink hover:border-ink/30'
+        active ? 'bg-ink text-canvas shadow-[var(--shadow-soft)]' : 'text-muted hover:text-ink'
       }`}
     >
       {children}
@@ -47,17 +45,17 @@ export function EnergyPicker({
   onEnergy,
 }: EnergyPickerProps) {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm">
-      <div className="flex items-center gap-2">
-        <span className="text-muted">I&rsquo;ve got</span>
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3 text-sm">
+      <div className="flex items-center gap-1 rounded-full bg-surface/70 border border-line px-1.5 py-1">
+        <span className="pl-2.5 pr-1 text-faint">I have</span>
         {TIMES.map((t) => (
           <Chip key={t} active={minutes === t} onClick={() => onMinutes(t)}>
             {t} min
           </Chip>
         ))}
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-muted">energy</span>
+      <div className="flex items-center gap-1 rounded-full bg-surface/70 border border-line px-1.5 py-1">
+        <span className="pl-2.5 pr-1 text-faint">energy</span>
         {ENERGIES.map((e) => (
           <Chip
             key={e.value}

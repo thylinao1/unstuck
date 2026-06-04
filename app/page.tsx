@@ -116,26 +116,29 @@ export default function Home() {
     items.length === 0 ? 'dump' : remaining.length === 0 ? 'done' : 'focus'
 
   return (
-    <main className="min-h-dvh w-full bg-canvas text-ink px-5 py-8 sm:py-12 flex flex-col">
-      <div className="mx-auto w-full max-w-xl flex items-center justify-between">
-        <span className="font-display text-lg text-ink">Unstuck</span>
+    <main className="relative z-10 min-h-dvh w-full text-ink px-5 py-7 sm:py-10 flex flex-col">
+      <header className="mx-auto w-full max-w-xl flex items-center justify-between">
+        <span className="font-display text-lg text-ink inline-flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+          Unstuck
+        </span>
         {items.length > 0 && (
           <button
             onClick={reset}
-            className="text-sm text-muted transition hover:text-ink"
+            className="text-sm text-faint transition hover:text-ink"
           >
             Start over
           </button>
         )}
-      </div>
+      </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center py-10">
+      <div className="flex-1 flex flex-col items-center justify-center py-12">
         {view === 'dump' && (
           <BrainDump onSubmit={handleSubmit} loading={loading} error={error} />
         )}
 
         {view === 'focus' && current && (
-          <section className="w-full max-w-xl flex flex-col gap-8">
+          <section className="rise w-full max-w-xl flex flex-col gap-8">
             <EnergyPicker
               minutes={minutes}
               energy={energy}
@@ -155,19 +158,19 @@ export default function Home() {
         )}
 
         {view === 'done' && (
-          <section className="w-full max-w-md text-center flex flex-col items-center gap-6">
+          <section className="rise w-full max-w-md text-center flex flex-col items-center gap-6">
             <div
               aria-hidden
-              className="h-1 w-16 rounded-full bg-accent/70"
+              className="h-1.5 w-24 rounded-full bg-gradient-to-r from-accent to-accent-deep"
             />
-            <h2 className="font-display text-3xl text-ink">Head cleared.</h2>
-            <p className="text-muted text-lg">
+            <h2 className="font-display text-4xl text-ink">Head cleared.</h2>
+            <p className="text-muted text-lg leading-relaxed">
               {items.length} {items.length === 1 ? 'thing' : 'things'}, cleared one
               small step at a time. Momentum is only ever this, repeated.
             </p>
             <button
               onClick={reset}
-              className="rounded-full bg-accent px-7 py-3.5 text-base font-medium text-white shadow-sm transition hover:brightness-110 active:scale-[0.98]"
+              className="rounded-full bg-accent px-7 py-4 text-base font-medium text-white shadow-[var(--shadow-soft)] transition hover:bg-accent-deep active:scale-[0.99]"
             >
               Begin again
             </button>
@@ -175,7 +178,7 @@ export default function Home() {
         )}
       </div>
 
-      <footer className="mx-auto w-full max-w-xl text-center text-xs text-muted/70">
+      <footer className="mx-auto w-full max-w-xl text-center text-xs text-faint/70">
         Unstuck · one small step at a time
       </footer>
     </main>

@@ -16,23 +16,23 @@ export function MomentumMeter({ done, total }: MomentumMeterProps) {
   const line = LINES[Math.min(done, LINES.length - 1)]
 
   return (
-    <div className="w-full flex flex-col gap-2" aria-live="polite">
+    <div className="w-full flex flex-col gap-2.5" aria-live="polite">
       <div className="flex items-center justify-between text-sm">
         <span className="text-ink font-medium">{line}</span>
-        <span className="text-muted">
-          {done} of {total} done
+        <span className="text-faint tabular-nums">
+          {done} of {total}
         </span>
       </div>
       <div
-        className="h-2.5 w-full overflow-hidden rounded-full bg-line/60"
+        className="h-2 w-full overflow-hidden rounded-full bg-line/70"
         role="progressbar"
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
       >
         <div
-          className="h-full rounded-full bg-accent transition-[width] duration-700 ease-out"
-          style={{ width: `${pct}%` }}
+          className="h-full rounded-full bg-gradient-to-r from-accent to-accent-deep transition-[width] duration-[900ms]"
+          style={{ width: `${pct}%`, transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)' }}
         />
       </div>
     </div>

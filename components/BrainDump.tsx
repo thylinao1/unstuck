@@ -21,16 +21,17 @@ export function BrainDump({ onSubmit, loading, error }: BrainDumpProps) {
   return (
     <section
       aria-labelledby="dump-heading"
-      className="w-full max-w-xl mx-auto flex flex-col items-stretch gap-6"
+      className="rise w-full max-w-xl mx-auto flex flex-col items-stretch gap-7"
     >
-      <header className="text-center flex flex-col gap-3">
+      <header className="text-center flex flex-col gap-4">
         <h1
           id="dump-heading"
-          className="font-display text-4xl sm:text-5xl text-ink leading-tight tracking-tight text-balance"
+          className="font-display text-[2.4rem] leading-[1.08] sm:text-6xl sm:leading-[1.04] text-ink tracking-[-0.01em] text-balance"
         >
-          Overwhelm freezes you. One small step thaws it.
+          Overwhelm freezes you. One small step{' '}
+          <em className="italic font-normal text-accent-deep">thaws</em> it.
         </h1>
-        <p className="text-muted text-lg">
+        <p className="text-faint text-lg leading-relaxed">
           Empty the noise. What comes back is a single, doable beginning.
         </p>
       </header>
@@ -42,18 +43,20 @@ export function BrainDump({ onSubmit, loading, error }: BrainDumpProps) {
         }}
         className="flex flex-col gap-4"
       >
-        <textarea
-          autoFocus
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={7}
-          placeholder={PLACEHOLDER}
-          aria-label="Brain dump"
-          className="w-full resize-none rounded-2xl bg-surface border border-line px-5 py-4 text-ink text-lg leading-relaxed shadow-sm placeholder:text-muted/50 outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/15"
-        />
+        <div className="rounded-[1.4rem] bg-surface border border-line shadow-[var(--shadow-soft)] transition focus-within:border-accent/55 focus-within:shadow-[var(--shadow-card)]">
+          <textarea
+            autoFocus
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={6}
+            placeholder={PLACEHOLDER}
+            aria-label="Brain dump"
+            className="w-full resize-none rounded-[1.4rem] bg-transparent px-6 py-5 text-ink text-lg leading-relaxed placeholder:text-faint/55 outline-none"
+          />
+        </div>
 
         {error && (
-          <p role="alert" className="text-sm text-accent text-center">
+          <p role="alert" className="text-sm text-accent-deep text-center">
             {error}
           </p>
         )}
@@ -61,7 +64,11 @@ export function BrainDump({ onSubmit, loading, error }: BrainDumpProps) {
         <button
           type="submit"
           disabled={!canSubmit}
-          className="group inline-flex items-center justify-center gap-2 rounded-full bg-accent px-7 py-3.5 text-base font-medium text-white shadow-sm transition enabled:hover:brightness-110 enabled:active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+          className={`group inline-flex items-center justify-center gap-2 rounded-full px-7 py-4 text-base font-medium transition ${
+            canSubmit
+              ? 'bg-accent text-white shadow-[var(--shadow-soft)] hover:bg-accent-deep active:scale-[0.99]'
+              : 'border border-line text-faint cursor-not-allowed'
+          }`}
         >
           {loading ? 'Finding your first step…' : 'Begin'}
           {!loading && (
@@ -74,7 +81,7 @@ export function BrainDump({ onSubmit, loading, error }: BrainDumpProps) {
           )}
         </button>
 
-        <p className="text-center text-sm text-muted/80">
+        <p className="text-center text-sm text-faint/80">
           Messy is fine. One thought per line works best.
         </p>
       </form>

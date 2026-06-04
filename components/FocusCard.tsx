@@ -17,45 +17,43 @@ const ENERGY_LABEL: Record<TriageItem['energy'], string> = {
 
 export function FocusCard({ item, fits, onDone, onSkip }: FocusCardProps) {
   return (
-    <article
-      // keyed by id in the parent so a fresh card animates in on each change
-      className="unstuck-card relative w-full rounded-3xl bg-surface border border-line shadow-[0_24px_64px_-28px_rgba(60,40,20,0.4)] px-7 py-9 sm:px-9 sm:py-11 flex flex-col gap-6"
-    >
-      <p className="text-xs uppercase tracking-[0.18em] text-muted/80">
+    <article className="unstuck-card relative w-full rounded-[1.75rem] bg-surface border border-line shadow-[var(--shadow-card)] px-7 py-9 sm:px-10 sm:py-12 flex flex-col gap-6">
+      <div className="flex items-center gap-2.5 text-xs uppercase tracking-[0.2em] text-faint">
+        <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
         From your dump
-      </p>
-      <p className="-mt-3 text-base text-muted">{item.title}</p>
+      </div>
+      <p className="-mt-2 text-base text-muted">{item.title}</p>
 
-      <h2 className="font-display text-2xl sm:text-3xl text-ink leading-snug text-balance">
+      <h2 className="font-display text-[1.7rem] leading-snug sm:text-[2rem] text-ink text-balance">
         {item.nextAction}
       </h2>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="rounded-full bg-canvas border border-line px-3 py-1 text-muted">
-          ⏱ {item.minutes} min
+        <span className="rounded-full bg-canvas border border-line px-3 py-1 text-muted tabular-nums">
+          {item.minutes} min
         </span>
         <span className="rounded-full bg-canvas border border-line px-3 py-1 text-muted">
           {ENERGY_LABEL[item.energy]}
         </span>
         {!fits && (
-          <span className="rounded-full bg-accent-soft px-3 py-1 text-accent">
+          <span className="rounded-full bg-accent-soft px-3 py-1 text-accent-deep">
             a stretch for right now
           </span>
         )}
       </div>
 
-      <div className="flex items-center gap-3 pt-1">
+      <div className="flex items-center gap-3 pt-2">
         <button
           type="button"
           onClick={onDone}
-          className="flex-1 rounded-full bg-accent px-6 py-3.5 text-base font-medium text-white shadow-sm transition hover:brightness-110 active:scale-[0.98]"
+          className="flex-1 rounded-full bg-accent px-6 py-4 text-base font-medium text-white shadow-[var(--shadow-soft)] transition hover:bg-accent-deep active:scale-[0.99]"
         >
-          Done&nbsp;✓
+          Done
         </button>
         <button
           type="button"
           onClick={onSkip}
-          className="rounded-full px-5 py-3.5 text-base font-medium text-muted transition hover:text-ink"
+          className="rounded-full border border-line px-5 py-4 text-base font-medium text-muted transition hover:text-ink hover:border-ink/25"
         >
           Not now
         </button>
