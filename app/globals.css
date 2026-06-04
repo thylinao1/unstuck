@@ -117,6 +117,20 @@ body::before {
   opacity: 0.4;
 }
 
+/* Mic icon while dictating: a soft pulse so "listening" reads at a glance. */
+@keyframes mic-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.mic-pulse {
+  animation: mic-pulse 1.3s var(--ease-soft) infinite;
+}
+
 /* The loading "breath": one slow inhale/exhale that fills the wait for triage. */
 @keyframes breathe {
   0%,
@@ -147,7 +161,8 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .unstuck-card,
   .rise,
-  .breath-orb {
+  .breath-orb,
+  .mic-pulse {
     animation: none;
   }
   *,

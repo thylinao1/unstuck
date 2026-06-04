@@ -16,17 +16,17 @@ test('landing: hero renders and Begin is disabled until you type', async ({ page
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Overwhelm freezes you')
   const begin = page.getByRole('button', { name: /begin/i })
   await expect(begin).toBeDisabled()
-  await page.getByLabel('Brain dump').fill('book the dentist\nreply to the landlord about the leak')
+  await page.getByLabel('Brain dump', { exact: true }).fill('book the dentist\nreply to the landlord about the leak')
   await expect(begin).toBeEnabled()
 })
 
 test('whitespace-only input cannot be submitted', async ({ page }) => {
-  await page.getByLabel('Brain dump').fill('     ')
+  await page.getByLabel('Brain dump', { exact: true }).fill('     ')
   await expect(page.getByRole('button', { name: /begin/i })).toBeDisabled()
 })
 
 test('dump -> one card with a reason -> complete advances momentum -> head cleared', async ({ page }) => {
-  await page.getByLabel('Brain dump').fill('book the dentist\nreply to the landlord about the leak')
+  await page.getByLabel('Brain dump', { exact: true }).fill('book the dentist\nreply to the landlord about the leak')
   await page.getByRole('button', { name: /begin/i }).click()
 
   // Exactly one action surfaces at a time, with a plain-language reason it fits.
@@ -44,7 +44,7 @@ test('dump -> one card with a reason -> complete advances momentum -> head clear
 })
 
 test('time and energy pickers are accessible radios and operate', async ({ page }) => {
-  await page.getByLabel('Brain dump').fill('clean the kitchen\nstart the essay due friday\ngo for a run')
+  await page.getByLabel('Brain dump', { exact: true }).fill('clean the kitchen\nstart the essay due friday\ngo for a run')
   await page.getByRole('button', { name: /begin/i }).click()
   await expect(page.getByText('From your dump')).toBeVisible()
 
@@ -57,7 +57,7 @@ test('time and energy pickers are accessible radios and operate', async ({ page 
 })
 
 test('a returning visitor lands on the hero, not mid-flow, and can resume', async ({ page }) => {
-  await page.getByLabel('Brain dump').fill('clean the kitchen\nfigure out the trip budget')
+  await page.getByLabel('Brain dump', { exact: true }).fill('clean the kitchen\nfigure out the trip budget')
   await page.getByRole('button', { name: /begin/i }).click()
   await expect(page.getByText('From your dump')).toBeVisible()
 
@@ -72,7 +72,7 @@ test('a returning visitor lands on the hero, not mid-flow, and can resume', asyn
 
 test('a dump with crisis content offers support instead of a task', async ({ page }) => {
   await page
-    .getByLabel('Brain dump')
+    .getByLabel('Brain dump', { exact: true })
     .fill("i can't do this anymore and i don't want to be alive\nemail the landlord about the leak")
   await page.getByRole('button', { name: /begin/i }).click()
 

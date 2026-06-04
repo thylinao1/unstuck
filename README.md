@@ -21,6 +21,8 @@ No account. No setup wall. Your session lives in your browser.
 
 Unstuck is an anti-freeze engine. The AI breaks each worry into its smallest next step and tags it with the time and energy it needs. Unstuck then instantly surfaces the one that fits the state you are in, and tells you why it is the right one right now. The AI handles the decomposition and tagging. The app handles the instant surfacing, the match to your energy and time, and the plain-language reason for the pick. All of it inside a calm interface built to lower anxiety instead of adding to it.
 
+This is why it is not just a chatbot. Paste your tasks into ChatGPT and it hands back a wall of ten steps, which is the exact thing that freezes you. Unstuck hands back one. Every choice traces to the research: one card at a time follows Cognitive Load Theory (Sweller, 1988), since a light load is doable and a wall of steps is overload that produces freeze; the smallest physical next action follows implementation intentions (Gollwitzer, 1999), since a concrete next move beats a vague goal; and the momentum meter is the progress principle (Amabile and Kramer, 2011), since small visible wins are the strongest day-to-day motivator.
+
 ## How it works
 
 ```mermaid

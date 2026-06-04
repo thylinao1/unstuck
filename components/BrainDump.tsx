@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useDictation } from './useDictation'
 
 interface BrainDumpProps {
   onSubmit: (text: string) => void
@@ -22,6 +23,11 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
   const [text, setText] = useState('')
   const hasText = text.trim().length > 0
   const canSubmit = hasText && !loading
+
+  const { supported: voiceSupported, listening, interim, toggle, stop } = useDictation(
+    (finalText) =>
+      setText((prev) => (prev.trim() ? `${prev.replace(/\s+$/, '')} ${finalText}` : finalText)),
+  )
 
   return (
     <section
@@ -48,6 +54,7 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
       <form
         onSubmit={(e) => {
           e.preventDefault()
+          stop()
           if (canSubmit) onSubmit(text.trim())
         }}
         className="flex flex-col gap-4"
@@ -76,6 +83,46 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
           </p>
         )}
 
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+          {voiceSupported && (
+            <button
+              type="button"
+              onClick={toggle}
+              aria-pressed={listening}
+              aria-label={listening ? 'Stop voice input' : 'Speak instead of typing'}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+                listening
+                  ? 'border-accent bg-accent-soft text-accent-deep'
+                  : 'border-line text-muted hover:text-ink hover:border-ink/25'
+              }`}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden
+                className={listening ? 'mic-pulse' : ''}
+              >
+                <rect x="9" y="3" width="6" height="11" rx="3" />
+                <path d="M5 11a7 7 0 0 0 14 0" />
+                <line x1="12" y1="18" x2="12" y2="21.5" />
+              </svg>
+              {listening ? 'Listening' : 'Speak'}
+            </button>
+          )}
+          <p id="dump-hint" className="text-sm text-faint/80">
+            {listening
+              ? interim || 'Say what is on your mind.'
+              : voiceSupported
+                ? 'Messy is fine. Type or speak, one thought per line.'
+                : 'Messy is fine. One thought per line works best.'}
+          </p>
+        </div>
+
         <button
           type="submit"
           disabled={!canSubmit}
@@ -96,10 +143,6 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
             </span>
           )}
         </button>
-
-        <p id="dump-hint" className="text-center text-sm text-faint/80">
-          Messy is fine. One thought per line works best.
-        </p>
 
         {onResume && (
           <button
