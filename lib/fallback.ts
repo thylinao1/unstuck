@@ -1,4 +1,5 @@
 import type { Energy, TriageItem } from './types'
+import { capitalizeFirst } from './text'
 
 // Deterministic, offline triage.
 //
@@ -49,7 +50,7 @@ function splitDump(raw: string): string[] {
 }
 
 function clip(s: string, max = 80): string {
-  const t = s.charAt(0).toUpperCase() + s.slice(1)
+  const t = capitalizeFirst(s)
   return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t
 }
 

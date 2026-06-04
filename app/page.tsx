@@ -11,14 +11,11 @@ import { SupportCard } from '@/components/SupportCard'
 import { clearSession, loadSession, saveSession, type StoredSession } from '@/lib/storage'
 
 const ENERGY_RANK: Record<Energy, number> = { low: 0, med: 1, high: 2 }
-// A surfaced item matching the energy you picked gets a nudge, so moving the
-// picker genuinely changes what surfaces — but urgency still leads. Energy is a
-// protective ceiling first (never surface something you're too drained for),
-// an affinity second.
-const ENERGY_MATCH_BONUS = 28
-
-function fitScore(item: TriageItem, energy: Energy): number {
-  return item.priority + (item.energy === energy ? ENERGY_MATCH_BONUS : 0)
+// Energy is a protective ceiling: never surface something you're too drained
+// for. Within what fits, urgency leads; matching the energy you picked only
+// breaks ties, so a deadline is never buried under a lighter task.
+function energyMatch(item: TriageItem, energy: Energy): number {
+  return item.energy === energy ? 1 : 0
 }
 
 // The state-aware reason this card is the one, in plain calm language. This is
@@ -59,11 +56,13 @@ export default function Home() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
 
-  // Persist after every meaningful change (once hydrated, and only with real data).
+  // Persist after every meaningful change (once hydrated, and only with real
+  // data). Never persist a crisis session: there should be nothing to silently
+  // resume into that would skip the support card on a later visit.
   useEffect(() => {
-    if (!hydrated || items.length === 0) return
+    if (!hydrated || items.length === 0 || support) return
     saveSession({ items, doneIds, minutes, energy })
-  }, [hydrated, items, doneIds, minutes, energy])
+  }, [hydrated, items, doneIds, minutes, energy, support])
 
   const doneSet = useMemo(() => new Set(doneIds), [doneIds])
   const remaining = useMemo(
@@ -81,7 +80,9 @@ export default function Home() {
       (it) => it.minutes <= minutes && ENERGY_RANK[it.energy] <= ENERGY_RANK[energy],
     )
     const pool = affordable.length > 0 ? affordable : remaining
-    return [...pool].sort((a, b) => fitScore(b, energy) - fitScore(a, energy))[0]
+    return [...pool].sort(
+      (a, b) => b.priority - a.priority || energyMatch(b, energy) - energyMatch(a, energy),
+    )[0]
   }, [remaining, minutes, energy])
 
   const currentFits = current

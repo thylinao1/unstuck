@@ -1,13 +1,16 @@
-// Crisis detection. Deliberately high-precision: a brain-dump is the highest-risk
-// free-text box for a self-harm disclosure, and this is a tool for ages 13+.
+// Crisis detection for the DETERMINISTIC FALLBACK PATH ONLY.
 //
-// When this fires (or the model sets needsSupport), the UI shows a calm support
-// card instead of converting a crisis into a task with a momentum meter. This is
-// a belt-and-suspenders net so the deterministic fallback path is covered too,
-// not only the AI path.
+// When the AI runs, the model's needsSupport flag is authoritative — it reasons
+// about context and tells "this deadline is killing me" (hyperbole) apart from
+// "I want to kill myself" (crisis), which no regex can. This net only runs when
+// the AI is unavailable (no key / error / rate-limit), so the degraded path is
+// still covered. It is high-precision: the common overwhelm idioms ("killing
+// me", "can't go on") are deliberately excluded to avoid false positives, while
+// the unambiguous phrases (incl. every form of "suicide", which a stale word
+// boundary previously dropped) are kept.
 
 const CRISIS =
-  /\b(kill(ing)?\s+(myself|me)|want(ing)?\s+to\s+die|wanna\s+die|end(ing)?\s+(my\s+life|it\s+all)|suicid|self[\s-]?harm|harm(ing)?\s+myself|hurt(ing)?\s+myself|don'?t\s+want\s+to\s+(be\s+alive|live|exist|wake\s+up)|no\s+reason\s+to\s+live|better\s+off\s+dead|can'?t\s+go\s+on)\b/i
+  /\b(kill(ing)?\s+myself|want(ing)?\s+to\s+die|wanna\s+die|end(ing)?\s+(my\s+life|it\s+all)|suicid\w*|self[\s-]?harm\w*|harm(ing)?\s+myself|hurt(ing)?\s+myself|don'?t\s+want\s+to\s+(be\s+alive|live|exist|wake\s+up)|no\s+reason\s+to\s+live|better\s+off\s+dead)\b/i
 
 export function looksLikeCrisis(text: string): boolean {
   return CRISIS.test(text)

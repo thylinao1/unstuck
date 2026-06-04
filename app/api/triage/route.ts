@@ -61,9 +61,10 @@ export async function POST(request: Request): Promise<Response> {
   const ai = await triageWithClaude(brainDump, minutes, energy)
   const items = ai?.items ?? triageFallback(brainDump)
   const source: 'ai' | 'fallback' = ai ? 'ai' : 'fallback'
-  // Belt and suspenders: trust the model's flag OR a high-precision keyword net,
-  // so the deterministic fallback path is covered too — not only the AI path.
-  const support = (ai?.needsSupport ?? false) || looksLikeCrisis(brainDump)
+  // When the AI ran, trust its needsSupport judgment — it tells crisis apart from
+  // hyperbole ("this deadline is killing me") far better than any keyword net.
+  // The regex is the fallback-only backstop for when the AI is unavailable.
+  const support = ai ? ai.needsSupport : looksLikeCrisis(brainDump)
 
   // One structured line per request → visible in Vercel Runtime Logs (fallback
   // rate, latency, volume) with no PII (length and counts only, never the text).

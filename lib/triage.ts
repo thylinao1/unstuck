@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import type { Energy, TriageItem } from './types'
+import { capitalizeFirst } from './text'
 
 // Claude-powered triage. Returns null on ANY problem (no key, API error,
 // malformed output) so the caller falls back to the deterministic engine and
@@ -91,12 +92,6 @@ function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 8)
 }
 
-// Capitalize the first character (works across languages) so every card reads
-// as a clean imperative, including non-English output where the model may not.
-function cap(s: string): string {
-  return s.length ? s[0].toUpperCase() + s.slice(1) : s
-}
-
 // One structured line to stderr so Vercel Runtime Logs show why we degraded,
 // instead of a silent swap to the fallback engine.
 function logFallback(reason: string, extra?: Record<string, unknown>): void {
@@ -159,8 +154,9 @@ export async function triageWithClaude(
     const needsSupport = parsed.data.needsSupport ?? false
     const items: TriageItem[] = parsed.data.items.map((item, i) => ({
       ...item,
-      title: cap(item.title),
-      nextAction: cap(item.nextAction),
+      // Title echoes the user's words, so keep their exact casing (iPhone, eBay).
+      // Only the generated next action gets a clean leading capital.
+      nextAction: capitalizeFirst(item.nextAction),
       id: `c${i}-${slug(item.title)}`,
     }))
 
