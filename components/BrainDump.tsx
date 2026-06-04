@@ -16,7 +16,8 @@ figure out the trip budget`
 
 export function BrainDump({ onSubmit, loading, error }: BrainDumpProps) {
   const [text, setText] = useState('')
-  const canSubmit = text.trim().length > 0 && !loading
+  const hasText = text.trim().length > 0
+  const canSubmit = hasText && !loading
 
   return (
     <section
@@ -65,8 +66,8 @@ export function BrainDump({ onSubmit, loading, error }: BrainDumpProps) {
           type="submit"
           disabled={!canSubmit}
           className={`group inline-flex items-center justify-center gap-2 rounded-full px-7 py-4 text-base font-medium transition ${
-            canSubmit
-              ? 'bg-accent text-white shadow-[var(--shadow-soft)] hover:bg-accent-deep active:scale-[0.99]'
+            hasText
+              ? `bg-accent text-white shadow-[var(--shadow-soft)] ${loading ? 'cursor-wait opacity-90' : 'hover:bg-accent-deep active:scale-[0.99]'}`
               : 'border border-line text-faint cursor-not-allowed'
           }`}
         >

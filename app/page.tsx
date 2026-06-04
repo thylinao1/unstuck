@@ -63,6 +63,7 @@ export default function Home() {
     : true
 
   async function handleSubmit(text: string) {
+    if (loading) return // guard against a fast double-submit
     setLoading(true)
     setError(null)
     try {
