@@ -35,4 +35,7 @@ export interface TriageResponse {
   /** How the items were produced — lets the demo prove the AI is real, and
    *  lets us show graceful degradation when the AI is unavailable. */
   source: 'ai' | 'fallback'
+  /** True when the dump shows signs of self-harm, crisis, or a medical
+   *  emergency. The UI then offers calm support instead of gamifying it. */
+  support?: boolean
 }

@@ -33,11 +33,16 @@ const HINTS: ReadonlyArray<Hint> = [
   { test: /\b(fix|bug|debug|code|build|deploy|ship)\b/i, step: 'Open the file and reproduce the problem once.', minutes: 5, energy: 'high' },
 ]
 
-const URGENT = /\b(today|urgent|asap|now|overdue|deadline|tonight|tomorrow|due|friday|monday)\b/i
+const URGENT =
+  /\b(today|urgent|asap|now|overdue|deadline|tonight|tomorrow|due|(mon|tues|wednes|thurs|fri|satur|sun)day)\b/i
 
+// Split on the separators a real brain dump uses: newlines (the UI asks for one
+// thought per line), semicolons, bullets, and comma-spaces. Deliberately NOT on
+// " and "/" then "/". " — those split mid-thought far more often than they
+// separate tasks ("understand and master calculus", "budget is 1.5k", "Mr. Smith").
 function splitDump(raw: string): string[] {
   return raw
-    .split(/\n|[;•]|,\s|\.\s|\sand\s|\sthen\s/i)
+    .split(/\n|[;•]|,\s+/)
     .map((s) => s.replace(/^[\s\-*\d.)]+/, '').trim())
     .filter((s) => s.length > 1)
     .slice(0, MAX_ITEMS)

@@ -34,8 +34,9 @@ body {
   font-family: var(--font-sans);
   background-color: var(--color-canvas);
   background-image:
-    radial-gradient(125% 95% at 50% -15%, oklch(0.99 0.013 85) 0%, transparent 55%),
-    radial-gradient(70% 55% at 88% 118%, oklch(0.93 0.04 45 / 0.3) 0%, transparent 60%);
+    radial-gradient(120% 90% at 50% -18%, oklch(0.995 0.014 85) 0%, transparent 52%),
+    radial-gradient(60% 52% at 85% 116%, oklch(0.92 0.05 45 / 0.34) 0%, transparent 60%),
+    radial-gradient(52% 50% at 12% 108%, oklch(0.93 0.04 62 / 0.22) 0%, transparent 60%);
   background-attachment: fixed;
 }
 
@@ -85,9 +86,68 @@ body::before {
   animation-delay: 90ms;
 }
 
+/* Wordmark dot: a single clay accent with a soft halo, the one bit of brand. */
+.unstuck-mark {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+/* The "pile in your head": faint cards stacked behind the brain-dump input, so
+   the empty hero carries the metaphor instead of floating in space. */
+.dump-ghost {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 1.4rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow-soft);
+}
+.dump-ghost-1 {
+  transform: translateY(-9px) rotate(-1.3deg);
+  opacity: 0.7;
+}
+.dump-ghost-2 {
+  transform: translateY(-17px) rotate(1.7deg);
+  opacity: 0.4;
+}
+
+/* The loading "breath": one slow inhale/exhale that fills the wait for triage. */
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(0.82);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+.breath-orb {
+  width: 84px;
+  height: 84px;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at 50% 42%,
+    var(--color-accent-soft) 0%,
+    oklch(0.9 0.06 50 / 0.5) 55%,
+    transparent 75%
+  );
+  box-shadow: 0 10px 44px -10px oklch(0.6 0.15 40 / 0.4);
+  animation: breathe 4.2s var(--ease-soft) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .unstuck-card,
-  .rise {
+  .rise,
+  .breath-orb {
     animation: none;
   }
   *,

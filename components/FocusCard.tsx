@@ -1,10 +1,16 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import type { TriageItem } from '@/lib/types'
 
 interface FocusCardProps {
   item: TriageItem
   fits: boolean
+  /** Plain-language reason this step fits the current time + energy. */
+  reason: string
+  /** Move keyboard focus here on mount (true when advancing to a new card,
+   *  false on a time/energy chip change so focus isn't yanked out of the picker). */
+  focusOnMount: boolean
   onDone: () => void
   onSkip: () => void
 }
@@ -15,7 +21,16 @@ const ENERGY_LABEL: Record<TriageItem['energy'], string> = {
   high: 'high energy',
 }
 
-export function FocusCard({ item, fits, onDone, onSkip }: FocusCardProps) {
+export function FocusCard({ item, fits, reason, focusOnMount, onDone, onSkip }: FocusCardProps) {
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  useEffect(() => {
+    // Mount only: the card remounts per surfaced action (keyed by id in the
+    // parent), so this lands focus on the new step for keyboard users.
+    if (focusOnMount) headingRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <article className="unstuck-card relative w-full rounded-[1.75rem] bg-surface border border-line shadow-[var(--shadow-card)] px-7 py-9 sm:px-10 sm:py-12 flex flex-col gap-6">
       <div className="flex items-center gap-2.5 text-xs uppercase tracking-[0.2em] text-faint">
@@ -24,7 +39,11 @@ export function FocusCard({ item, fits, onDone, onSkip }: FocusCardProps) {
       </div>
       <p className="-mt-2 text-base text-muted">{item.title}</p>
 
-      <h2 className="font-display text-[1.7rem] leading-snug sm:text-[2rem] text-ink text-balance">
+      <h2
+        ref={headingRef}
+        tabIndex={-1}
+        className="font-display text-[1.7rem] leading-snug sm:text-[2rem] text-ink text-balance outline-none"
+      >
         {item.nextAction}
       </h2>
 
@@ -41,6 +60,8 @@ export function FocusCard({ item, fits, onDone, onSkip }: FocusCardProps) {
           </span>
         )}
       </div>
+
+      <p className="-mt-1 text-sm text-faint italic">{reason}</p>
 
       <div className="flex items-center gap-3 pt-2">
         <button

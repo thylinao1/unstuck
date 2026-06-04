@@ -3,12 +3,35 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Energy, TriageItem, TriageResponse } from '@/lib/types'
 import { BrainDump } from '@/components/BrainDump'
+import { Breath } from '@/components/Breath'
 import { EnergyPicker } from '@/components/EnergyPicker'
 import { FocusCard } from '@/components/FocusCard'
 import { MomentumMeter } from '@/components/MomentumMeter'
-import { clearSession, loadSession, saveSession } from '@/lib/storage'
+import { SupportCard } from '@/components/SupportCard'
+import { clearSession, loadSession, saveSession, type StoredSession } from '@/lib/storage'
 
 const ENERGY_RANK: Record<Energy, number> = { low: 0, med: 1, high: 2 }
+// A surfaced item matching the energy you picked gets a nudge, so moving the
+// picker genuinely changes what surfaces — but urgency still leads. Energy is a
+// protective ceiling first (never surface something you're too drained for),
+// an affinity second.
+const ENERGY_MATCH_BONUS = 28
+
+function fitScore(item: TriageItem, energy: Energy): number {
+  return item.priority + (item.energy === energy ? ENERGY_MATCH_BONUS : 0)
+}
+
+// The state-aware reason this card is the one, in plain calm language. This is
+// what makes the matching legible instead of magic — the app surfaces a step
+// AND tells you why it fits the moment you're in.
+function fitLine(item: TriageItem, minutes: number, energy: Energy): string {
+  const fits = item.minutes <= minutes && ENERGY_RANK[item.energy] <= ENERGY_RANK[energy]
+  if (!fits) return 'A small stretch for right now, but the most unblocking thing left.'
+  if (item.energy === energy && energy === 'high') return "You have the energy. A good moment to take this one on."
+  if (item.energy === energy && energy === 'low') return 'Gentle enough for a low-energy moment, and it still moves things.'
+  if (item.energy === 'low') return 'Light enough to begin right now, whatever your energy.'
+  return `Fits the ${minutes} minutes and the energy you have right now.`
+}
 
 export default function Home() {
   const [items, setItems] = useState<TriageItem[]>([])
@@ -17,21 +40,26 @@ export default function Home() {
   const [energy, setEnergy] = useState<Energy>('med')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [support, setSupport] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const [savedSession, setSavedSession] = useState<StoredSession | null>(null)
 
-  // Resume a previous session from the browser, once, on mount.
+  // Whether the last view change was an "advance" (new card to act on) or a
+  // "pick" (time/energy toggle) — drives whether focus moves to the new card,
+  // so a chip toggle doesn't yank focus out of the picker.
+  const [lastAction, setLastAction] = useState<'advance' | 'pick'>('advance')
+
+  // Detect a previous session on mount, but DON'T auto-jump into it — the hero
+  // (which carries the whole pitch) always shows first; resume is opt-in.
   useEffect(() => {
     const session = loadSession()
-    if (session && session.items.length > 0) {
-      setItems(session.items)
-      setDoneIds(session.doneIds ?? [])
-      setMinutes(session.minutes ?? 15)
-      setEnergy(session.energy ?? 'med')
-    }
+    /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration from localStorage, which is unavailable during SSR */
+    if (session && session.items.length > 0) setSavedSession(session)
     setHydrated(true)
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
 
-  // Persist after every change (once hydrated, and only with real data).
+  // Persist after every meaningful change (once hydrated, and only with real data).
   useEffect(() => {
     if (!hydrated || items.length === 0) return
     saveSession({ items, doneIds, minutes, energy })
@@ -43,19 +71,17 @@ export default function Home() {
     [items, doneSet],
   )
 
-  // Surface the most unblocking thing that fits the time + energy you have
-  // right now. If nothing fits, still offer the top remaining item so you are
-  // never left with a blank screen.
+  // Surface the most fitting next step for the time + energy you have right now.
+  // Energy is a hard ceiling (never something you're too drained for); within
+  // what fits, rank by urgency plus an energy-match nudge. If nothing fits, still
+  // offer the top remaining item so the screen is never blank.
   const current = useMemo(() => {
     if (remaining.length === 0) return null
-    const fitsNow = remaining
-      .filter(
-        (it) =>
-          it.minutes <= minutes && ENERGY_RANK[it.energy] <= ENERGY_RANK[energy],
-      )
-      .sort((a, b) => b.priority - a.priority)
-    if (fitsNow.length > 0) return fitsNow[0]
-    return [...remaining].sort((a, b) => b.priority - a.priority)[0]
+    const affordable = remaining.filter(
+      (it) => it.minutes <= minutes && ENERGY_RANK[it.energy] <= ENERGY_RANK[energy],
+    )
+    const pool = affordable.length > 0 ? affordable : remaining
+    return [...pool].sort((a, b) => fitScore(b, energy) - fitScore(a, energy))[0]
   }, [remaining, minutes, energy])
 
   const currentFits = current
@@ -77,12 +103,16 @@ export default function Home() {
         throw new Error(data?.error ?? 'Something went wrong. Try again.')
       }
       const data = (await res.json()) as TriageResponse
-      if (data.items.length === 0) {
+      const isCrisis = data.support ?? false
+      if (data.items.length === 0 && !isCrisis) {
         setError('I could not find anything to act on. Try a few more words.')
         return
       }
+      setLastAction('advance')
+      setSupport(isCrisis)
       setItems(data.items)
       setDoneIds([])
+      setSavedSession(null)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Try again.')
     } finally {
@@ -90,13 +120,25 @@ export default function Home() {
     }
   }
 
+  function resumeSession() {
+    if (!savedSession) return
+    setLastAction('advance')
+    setItems(savedSession.items)
+    setDoneIds(savedSession.doneIds ?? [])
+    setMinutes(savedSession.minutes ?? 15)
+    setEnergy(savedSession.energy ?? 'med')
+    setSavedSession(null)
+  }
+
   function completeCurrent() {
     if (!current) return
+    setLastAction('advance')
     setDoneIds((prev) => [...prev, current.id])
   }
 
   function skipCurrent() {
     if (!current) return
+    setLastAction('advance')
     // Push this card to the back by dropping its priority below the rest.
     setItems((prev) => {
       const lowest = Math.min(...prev.map((p) => p.priority))
@@ -106,24 +148,47 @@ export default function Home() {
     })
   }
 
+  function setMinutesPicked(m: number) {
+    setLastAction('pick')
+    setMinutes(m)
+  }
+
+  function setEnergyPicked(e: Energy) {
+    setLastAction('pick')
+    setEnergy(e)
+  }
+
   function reset() {
     clearSession()
     setItems([])
     setDoneIds([])
+    setSupport(false)
     setError(null)
+    setSavedSession(null)
   }
 
-  const view: 'dump' | 'focus' | 'done' =
-    items.length === 0 ? 'dump' : remaining.length === 0 ? 'done' : 'focus'
+  function dismissSupport() {
+    setSupport(false)
+  }
+
+  const view: 'dump' | 'support' | 'focus' | 'done' = loading
+    ? 'dump'
+    : support
+      ? 'support'
+      : items.length === 0
+        ? 'dump'
+        : remaining.length === 0
+          ? 'done'
+          : 'focus'
 
   return (
     <main className="relative z-10 min-h-dvh w-full text-ink px-5 py-7 sm:py-10 flex flex-col">
       <header className="mx-auto w-full max-w-xl flex items-center justify-between">
         <span className="font-display text-lg text-ink inline-flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+          <span className="unstuck-mark" aria-hidden />
           Unstuck
         </span>
-        {items.length > 0 && (
+        {items.length > 0 && !loading && (
           <button
             onClick={reset}
             className="text-sm text-faint transition hover:text-ink"
@@ -133,24 +198,43 @@ export default function Home() {
         )}
       </header>
 
+      {/* Screen-reader announcer: reads the surfaced action whenever it changes,
+          including on a time/energy chip toggle that swaps the card. */}
+      <p className="sr-only" aria-live="polite">
+        {view === 'focus' && current ? `Next: ${current.nextAction}` : ''}
+      </p>
+
       <div className="flex-1 flex flex-col items-center justify-center py-12">
-        {view === 'dump' && (
-          <BrainDump onSubmit={handleSubmit} loading={loading} error={error} />
+        {loading && <Breath />}
+
+        {!loading && view === 'dump' && (
+          <BrainDump
+            onSubmit={handleSubmit}
+            loading={loading}
+            error={error}
+            onResume={savedSession ? resumeSession : undefined}
+          />
         )}
 
-        {view === 'focus' && current && (
+        {!loading && view === 'support' && (
+          <SupportCard onContinue={items.length > 0 ? dismissSupport : undefined} onReset={reset} />
+        )}
+
+        {!loading && view === 'focus' && current && (
           <section className="rise w-full max-w-xl flex flex-col gap-8">
             <EnergyPicker
               minutes={minutes}
               energy={energy}
-              onMinutes={setMinutes}
-              onEnergy={setEnergy}
+              onMinutes={setMinutesPicked}
+              onEnergy={setEnergyPicked}
             />
             {/* key forces a fresh entrance animation per surfaced action */}
             <FocusCard
               key={current.id}
               item={current}
               fits={currentFits}
+              reason={fitLine(current, minutes, energy)}
+              focusOnMount={lastAction === 'advance'}
               onDone={completeCurrent}
               onSkip={skipCurrent}
             />
@@ -158,7 +242,7 @@ export default function Home() {
           </section>
         )}
 
-        {view === 'done' && (
+        {!loading && view === 'done' && (
           <section className="rise w-full max-w-md text-center flex flex-col items-center gap-6">
             <div
               aria-hidden

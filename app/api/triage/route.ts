@@ -1,13 +1,18 @@
 import { z } from 'zod'
 import { triageWithClaude } from '@/lib/triage'
 import { triageFallback } from '@/lib/fallback'
+import { looksLikeCrisis } from '@/lib/safety'
+import { rateLimit } from '@/lib/ratelimit'
 import type { TriageResponse } from '@/lib/types'
 
 // POST /api/triage
 //
 // Tries Claude (Haiku) for triage; on no key or ANY error, falls back to the
 // deterministic offline engine. The Anthropic key is read server-side in
-// lib/triage.ts and never reaches the client.
+// lib/triage.ts and never reaches the client. Rate limited per IP so the public
+// endpoint can't be scripted to drain the key.
+
+export const maxDuration = 15 // a stuck Claude call can't pin the function
 
 const requestSchema = z.object({
   brainDump: z.string().min(1, 'Write something first.').max(8000),
@@ -15,7 +20,29 @@ const requestSchema = z.object({
   energy: z.enum(['low', 'med', 'high']).optional(),
 })
 
+function clientIp(request: Request): string {
+  const fwd = request.headers.get('x-forwarded-for')
+  return fwd ? (fwd.split(',')[0]?.trim() ?? 'unknown') : 'unknown'
+}
+
+// Map validation failures to calm, user-safe copy instead of leaking raw zod
+// strings like "Too big: expected string to have <=8000 characters".
+function friendlyError(error: z.ZodError): string {
+  const issue = error.issues[0]
+  if (issue?.message === 'Write something first.') return 'Write something first.'
+  if (issue?.code === 'too_big') return 'That is a lot at once. Try trimming it down a little.'
+  return 'Could not read that. Try a few short lines, one thought per line.'
+}
+
 export async function POST(request: Request): Promise<Response> {
+  const limit = rateLimit(clientIp(request))
+  if (!limit.ok) {
+    return Response.json(
+      { error: 'One moment — a few too many requests. Try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+    )
+  }
+
   let body: unknown
   try {
     body = await request.json()
@@ -25,14 +52,34 @@ export async function POST(request: Request): Promise<Response> {
 
   const parsed = requestSchema.safeParse(body)
   if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message ?? 'Invalid request.'
-    return Response.json({ error: message }, { status: 400 })
+    return Response.json({ error: friendlyError(parsed.error) }, { status: 400 })
   }
 
   const { brainDump, minutes = 15, energy = 'med' } = parsed.data
+  const started = Date.now()
 
-  const aiItems = await triageWithClaude(brainDump, minutes, energy)
-  const items = aiItems ?? triageFallback(brainDump)
-  const payload: TriageResponse = { items, source: aiItems ? 'ai' : 'fallback' }
+  const ai = await triageWithClaude(brainDump, minutes, energy)
+  const items = ai?.items ?? triageFallback(brainDump)
+  const source: 'ai' | 'fallback' = ai ? 'ai' : 'fallback'
+  // Belt and suspenders: trust the model's flag OR a high-precision keyword net,
+  // so the deterministic fallback path is covered too — not only the AI path.
+  const support = (ai?.needsSupport ?? false) || looksLikeCrisis(brainDump)
+
+  // One structured line per request → visible in Vercel Runtime Logs (fallback
+  // rate, latency, volume) with no PII (length and counts only, never the text).
+  console.log(
+    JSON.stringify({
+      at: 'triage',
+      source,
+      support,
+      items: items.length,
+      len: brainDump.length,
+      minutes,
+      energy,
+      ms: Date.now() - started,
+    }),
+  )
+
+  const payload: TriageResponse = { items, source, support }
   return Response.json(payload)
 }

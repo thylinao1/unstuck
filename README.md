@@ -12,14 +12,14 @@ Unstuck turns that pile into one small step. You write down whatever is in your 
 
 1. **Brain dump.** Write everything swirling in your head. Messy is fine.
 2. **Triage.** Each thing becomes a 2-to-5-minute first step, not the whole task.
-3. **One card at a time.** Unstuck shows the most unblocking action that fits your current time and energy. Set "5 min, low energy" and it swaps in something you can actually face.
+3. **One card at a time.** Unstuck shows the most unblocking action that fits your current time and energy, and tells you why it fits. Set "5 min, low energy" and it swaps in something you can actually face.
 4. **Momentum.** Mark it done, the meter fills, the next card appears.
 
 No account. No setup wall. Your session lives in your browser.
 
 ## The idea that makes it different
 
-Plenty of tools organize a list or break a task down. Unstuck's move is to match the next action to the state you're in right now. The right small thing for the energy you actually have, inside a calm interface built to lower anxiety instead of adding to it.
+Unstuck is an anti-freeze engine. The AI breaks each worry into its smallest next step and tags it with the time and energy it needs. Unstuck then instantly surfaces the one that fits the state you are in, and tells you why it is the right one right now. The AI handles the decomposition and tagging. The app handles the instant surfacing, the match to your energy and time, and the plain-language reason for the pick. All of it inside a calm interface built to lower anxiety instead of adding to it.
 
 ## How it works
 
@@ -34,8 +34,9 @@ flowchart LR
 ```
 
 - `POST /api/triage` takes your dump plus current time and energy, and returns ranked `TriageItem`s, validated with zod.
-- Triage runs on Claude (Haiku 4.5) server-side, using forced tool use so the JSON is always well formed. With no key, or on any error, it falls back to a deterministic engine (`lib/fallback.ts`), so the app works even offline.
-- The Claude key is read server-side only (`process.env.ANTHROPIC_API_KEY`). It never reaches the browser.
+- Triage runs on Claude (Haiku 4.5) server-side, rate limited, using forced tool use so the JSON is always well formed. With no key, or on any error, it falls back to a deterministic engine (`lib/fallback.ts`), so the app works even offline.
+- The Claude key is read server-side only and never reaches the browser. The triage endpoint is rate limited, and because the model is constrained to a single tool schema, a brain dump can only ever produce a triage list. A prompt-injection attempt inside the dump cannot exfiltrate anything or change what the server does.
+- If a dump shows signs of crisis or self-harm, Unstuck sets the tasks aside and offers calm support resources (988 and Crisis Text Line) instead of turning a crisis into a task.
 - State lives in `localStorage`. No backend, no accounts, no personal data stored.
 
 See [`../docs/CONTRACT.md`](../docs/CONTRACT.md) for the full interface and [`../docs/SPEC.md`](../docs/SPEC.md) for scope.
