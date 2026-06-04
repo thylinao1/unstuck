@@ -156,27 +156,27 @@ export default function Home() {
 
         {view === 'done' && (
           <section className="w-full max-w-md text-center flex flex-col items-center gap-6">
-            <div className="text-5xl" aria-hidden>
-              🌤️
-            </div>
+            <div
+              aria-hidden
+              className="h-1 w-16 rounded-full bg-accent/70"
+            />
             <h2 className="font-display text-3xl text-ink">Head cleared.</h2>
             <p className="text-muted text-lg">
-              You worked through {items.length}{' '}
-              {items.length === 1 ? 'thing' : 'things'}, one small step at a time.
-              That&rsquo;s momentum.
+              {items.length} {items.length === 1 ? 'thing' : 'things'}, cleared one
+              small step at a time. Momentum is only ever this, repeated.
             </p>
             <button
               onClick={reset}
               className="rounded-full bg-accent px-7 py-3.5 text-base font-medium text-white shadow-sm transition hover:brightness-110 active:scale-[0.98]"
             >
-              Clear something else
+              Begin again
             </button>
           </section>
         )}
       </div>
 
       <footer className="mx-auto w-full max-w-xl text-center text-xs text-muted/70">
-        Unstuck · one calm step at a time
+        Unstuck · one small step at a time
       </footer>
     </main>
   )

@@ -13,9 +13,9 @@ const newsreader = Newsreader({
 })
 
 export const metadata: Metadata = {
-  title: 'Unstuck — one calm next step',
+  title: 'Unstuck: one small next step',
   description:
-    'Dump everything on your mind and get the single smallest next step you can actually do right now. An anti-overwhelm tool that helps you take action and stay in control of your day.',
+    'Dump everything on your mind and get the single smallest next step you can actually take right now. A calm tool that helps you take action and stay in control of your day.',
 }
 
 export default function RootLayout({

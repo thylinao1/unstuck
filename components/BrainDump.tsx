@@ -26,13 +26,12 @@ export function BrainDump({ onSubmit, loading, error }: BrainDumpProps) {
       <header className="text-center flex flex-col gap-3">
         <h1
           id="dump-heading"
-          className="font-display text-4xl sm:text-5xl text-ink leading-tight tracking-tight"
+          className="font-display text-4xl sm:text-5xl text-ink leading-tight tracking-tight text-balance"
         >
-          What&rsquo;s on your mind?
+          Overwhelm freezes you. One small step thaws it.
         </h1>
         <p className="text-muted text-lg">
-          Empty your head. You&rsquo;ll get one small thing to start &mdash; not a
-          list to dread.
+          Empty the noise. What comes back is a single, doable beginning.
         </p>
       </header>
 
@@ -64,7 +63,7 @@ export function BrainDump({ onSubmit, loading, error }: BrainDumpProps) {
           disabled={!canSubmit}
           className="group inline-flex items-center justify-center gap-2 rounded-full bg-accent px-7 py-3.5 text-base font-medium text-white shadow-sm transition enabled:hover:brightness-110 enabled:active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {loading ? 'Clearing your head…' : 'Clear my head'}
+          {loading ? 'Finding your first step…' : 'Begin'}
           {!loading && (
             <span
               className="transition-transform group-hover:translate-x-0.5"
@@ -76,7 +75,7 @@ export function BrainDump({ onSubmit, loading, error }: BrainDumpProps) {
         </button>
 
         <p className="text-center text-sm text-muted/80">
-          Messy is fine. Dump it all &mdash; roughly one thought per line.
+          Messy is fine. One thought per line works best.
         </p>
       </form>
     </section>

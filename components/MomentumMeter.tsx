@@ -4,10 +4,10 @@ interface MomentumMeterProps {
 }
 
 const LINES = [
-  "Let's get the first one.",
-  'Nice. That is momentum.',
-  "You're rolling now.",
-  'Look at you go.',
+  'Start with one.',
+  'One done. That is momentum.',
+  'It builds from here.',
+  'The pile is getting smaller.',
   'Almost clear.',
 ]
 
