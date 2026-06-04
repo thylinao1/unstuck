@@ -1,26 +1,50 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Design direction: "warm paper, calm focus".
+   A soft ivory canvas, generous whitespace, one confident clay accent used
+   sparingly for the action and the momentum. Deliberately NOT dark, NOT a
+   purple-gradient template. Editorial serif headings paired with a clean sans. */
+@theme {
+  --color-canvas: oklch(0.985 0.008 85);
+  --color-surface: oklch(0.997 0.004 90);
+  --color-ink: oklch(0.27 0.02 60);
+  --color-muted: oklch(0.55 0.025 65);
+  --color-line: oklch(0.91 0.012 80);
+  --color-accent: oklch(0.55 0.15 40);
+  --color-accent-soft: oklch(0.93 0.045 55);
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.unstuck-card {
+  animation: card-in 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unstuck-card {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }
