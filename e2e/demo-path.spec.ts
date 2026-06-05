@@ -40,7 +40,7 @@ test('dump -> one card with a reason -> complete advances momentum -> head clear
     if (!(await done.isVisible().catch(() => false))) break
     await done.click()
   }
-  await expect(page.getByRole('heading', { name: 'Head cleared.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Begin again' })).toBeVisible()
 })
 
 test('time and energy pickers are accessible radios and operate', async ({ page }) => {

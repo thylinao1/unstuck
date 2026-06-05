@@ -10,6 +10,19 @@ import { MomentumMeter } from '@/components/MomentumMeter'
 import { SupportCard } from '@/components/SupportCard'
 import { clearSession, loadSession, saveSession, type StoredSession } from '@/lib/storage'
 import { addCleared, loadStats } from '@/lib/stats'
+import { DONE_PHRASES } from '@/lib/donePhrases'
+
+// Render a celebration line, giving the *marked* word the big animated treatment.
+function renderDone(text: string) {
+  return text.split(/(\*[^*]+\*)/g).map((part, i) => {
+    const marked = part.length > 2 && part.startsWith('*') && part.endsWith('*')
+    return (
+      <span key={i} className={marked ? 'done-em' : undefined}>
+        {marked ? part.slice(1, -1) : part}
+      </span>
+    )
+  })
+}
 
 const ENERGY_RANK: Record<Energy, number> = { low: 0, med: 1, high: 2 }
 // Energy is a protective ceiling: never surface something you're too drained
@@ -30,6 +43,7 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false)
   const [savedSession, setSavedSession] = useState<StoredSession | null>(null)
   const [lifetimeCleared, setLifetimeCleared] = useState(0)
+  const [donePhrase, setDonePhrase] = useState(DONE_PHRASES[0])
 
   // Whether the last view change was an "advance" (new card to act on) or a
   // "pick" (time/energy toggle) — drives whether focus moves to the new card,
@@ -125,6 +139,10 @@ export default function Home() {
   function completeCurrent() {
     if (!current) return
     setLastAction('advance')
+    // Pick a fresh celebration line as the last step is cleared.
+    if (remaining.length === 1) {
+      setDonePhrase(DONE_PHRASES[Math.floor(Math.random() * DONE_PHRASES.length)])
+    }
     setDoneIds((prev) => [...prev, current.id])
     setLifetimeCleared(addCleared(1)) // calm gamification: a count that only grows
   }
@@ -243,10 +261,12 @@ export default function Home() {
                 className="celebrate relative h-1.5 w-24 rounded-full bg-gradient-to-r from-accent to-accent-deep"
               />
             </div>
-            <h2 className="font-display text-4xl text-ink">Head cleared.</h2>
+            <h2 className="font-display text-[2.6rem] sm:text-[3.1rem] leading-[1.12] text-ink text-balance">
+              {renderDone(donePhrase)}
+            </h2>
             <p className="text-muted text-lg leading-relaxed">
-              {items.length} {items.length === 1 ? 'thing' : 'things'}, cleared one
-              small step at a time. Momentum is only ever this, repeated.
+              Head cleared. {items.length} {items.length === 1 ? 'thing' : 'things'},
+              one small step at a time.
             </p>
             {lifetimeCleared > 0 && (
               <p className="text-sm text-faint">

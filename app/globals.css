@@ -155,6 +155,32 @@ body::before {
   animation: celebrate 700ms var(--ease-soft) both;
 }
 
+/* The standout word in a celebration line: bigger, with a warm gradient that
+   slowly radiates across it. The one loud, playful moment in a calm app. */
+@keyframes done-shine {
+  to {
+    background-position: 220% center;
+  }
+}
+.done-em {
+  display: inline-block;
+  font-size: 1.22em;
+  background-image: linear-gradient(
+    100deg,
+    var(--color-accent) 0%,
+    oklch(0.72 0.17 55) 28%,
+    oklch(0.85 0.15 88) 50%,
+    oklch(0.72 0.17 55) 72%,
+    var(--color-accent-deep) 100%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: done-shine 3.2s linear infinite;
+}
+
 /* Mic icon while dictating: a soft pulse so "listening" reads at a glance. */
 @keyframes mic-pulse {
   0%,
@@ -201,7 +227,8 @@ body::before {
   .rise,
   .breath-orb,
   .mic-pulse,
-  .celebrate {
+  .celebrate,
+  .done-em {
     animation: none;
   }
   *,
