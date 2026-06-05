@@ -81,3 +81,15 @@ test('a dump with crisis content offers support instead of a task', async ({ pag
   // The crisis is not rendered as a focus card with a momentum meter.
   await expect(page.getByText('From your dump')).toHaveCount(0)
 })
+
+test('a due reminder surfaces as a gentle banner and can be dismissed', async ({ page }) => {
+  const msg = 'A gentle nudge. The smallest step still counts.'
+  await page.evaluate(
+    (m) => localStorage.setItem('unstuck:nudge:v1', JSON.stringify({ at: Date.now() - 1000, message: m })),
+    msg,
+  )
+  await page.reload()
+  await expect(page.getByText(msg)).toBeVisible()
+  await page.getByRole('button', { name: 'Dismiss reminder' }).click()
+  await expect(page.getByText(msg)).toHaveCount(0)
+})

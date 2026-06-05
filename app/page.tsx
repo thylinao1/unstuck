@@ -7,7 +7,18 @@ import { Breath } from '@/components/Breath'
 import { EnergyPicker } from '@/components/EnergyPicker'
 import { FocusCard } from '@/components/FocusCard'
 import { MomentumMeter } from '@/components/MomentumMeter'
+import { RemindMe } from '@/components/RemindMe'
 import { SupportCard } from '@/components/SupportCard'
+import {
+  clearNudge,
+  fireNotification,
+  loadNudge,
+  nudgeTime,
+  randomNudgeMessage,
+  requestNudgePermission,
+  scheduleNudge,
+  type NudgeOption,
+} from '@/lib/nudges'
 import { clearSession, loadSession, saveSession, type StoredSession } from '@/lib/storage'
 import { addCleared, loadStats } from '@/lib/stats'
 import { DONE_PHRASES } from '@/lib/donePhrases'
@@ -44,6 +55,8 @@ export default function Home() {
   const [savedSession, setSavedSession] = useState<StoredSession | null>(null)
   const [lifetimeCleared, setLifetimeCleared] = useState(0)
   const [donePhrase, setDonePhrase] = useState(DONE_PHRASES[0])
+  const [nudgeBanner, setNudgeBanner] = useState<string | null>(null)
+  const [nudgeTick, setNudgeTick] = useState(0)
 
   // Whether the last view change was an "advance" (new card to act on) or a
   // "pick" (time/energy toggle) — drives whether focus moves to the new card,
@@ -68,6 +81,27 @@ export default function Home() {
     if (!hydrated || items.length === 0 || support) return
     saveSession({ items, doneIds, minutes, energy })
   }, [hydrated, items, doneIds, minutes, energy, support])
+
+  // Gentle nudge: surface a due reminder on load; if one is scheduled for the
+  // future, fire it at its time while the tab stays open. The reminder is only
+  // cleared when the user dismisses it (so a missed one is not lost), which also
+  // keeps this effect idempotent and safe under dev double-invoke.
+  useEffect(() => {
+    if (!hydrated) return
+    const nudge = loadNudge()
+    if (!nudge) return
+    const delay = nudge.at - Date.now()
+    if (delay <= 0) {
+      /* eslint-disable-next-line react-hooks/set-state-in-effect -- surface a due reminder on load */
+      setNudgeBanner(nudge.message)
+      return
+    }
+    const id = setTimeout(() => {
+      setNudgeBanner(nudge.message)
+      fireNotification(nudge.message)
+    }, Math.min(delay, 2_147_483_000))
+    return () => clearTimeout(id)
+  }, [hydrated, nudgeTick])
 
   const doneSet = useMemo(() => new Set(doneIds), [doneIds])
   const remaining = useMemo(
@@ -188,6 +222,12 @@ export default function Home() {
     setSupport(false)
   }
 
+  async function handleRemind(option: NudgeOption) {
+    await requestNudgePermission() // opt-in; the on-reopen line works regardless
+    scheduleNudge({ at: nudgeTime(option), message: randomNudgeMessage() })
+    setNudgeTick((t) => t + 1)
+  }
+
   const view: 'dump' | 'support' | 'focus' | 'done' = loading
     ? 'dump'
     : support
@@ -214,6 +254,26 @@ export default function Home() {
           </button>
         )}
       </header>
+
+      {nudgeBanner && (
+        <div
+          role="status"
+          className="rise mx-auto mt-3 flex w-full max-w-xl items-center justify-between gap-3 rounded-2xl border border-accent/20 bg-accent-soft/60 px-5 py-3 text-sm text-accent-deep"
+        >
+          <span>{nudgeBanner}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setNudgeBanner(null)
+              clearNudge()
+            }}
+            className="shrink-0 text-accent-deep/70 transition hover:text-accent-deep"
+            aria-label="Dismiss reminder"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Screen-reader announcer: reads the surfaced action whenever it changes,
           including on a time/energy chip toggle that swaps the card. */}
@@ -258,6 +318,7 @@ export default function Home() {
               onSkip={skipCurrent}
             />
             <MomentumMeter done={doneIds.length} total={items.length} />
+            <RemindMe onRemind={handleRemind} />
           </section>
         )}
 
