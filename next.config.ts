@@ -5,12 +5,15 @@ import type { NextConfig } from "next";
 // bootstrap and the app uses a couple of inline style attributes); everything
 // else is locked down. A nonce-based CSP would be stricter but needs middleware
 // and risks breaking the demo, so we ship a present-and-sane CSP over none.
+const isDev = process.env.NODE_ENV !== 'production'
 const CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "font-src 'self' data:",
   "img-src 'self' data: https:",
-  "script-src 'self' 'unsafe-inline'",
+  // React dev mode uses eval() for debugging; allow it in development only.
+  // Production stays locked to 'self' 'unsafe-inline' (no eval).
+  isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "connect-src 'self'",
   "frame-ancestors 'none'",

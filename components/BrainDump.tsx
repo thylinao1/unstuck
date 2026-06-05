@@ -15,10 +15,27 @@ interface BrainDumpProps {
 const MAX = 8000
 
 const PLACEHOLDER = `reply to Dana about the invoice
-book the dentist
-that essay is due Friday and I haven't started
-clean the kitchen
+the essay is due Friday
 figure out the trip budget`
+
+// Render a hero phrase, giving the *marked* word an accent underline.
+function renderPhrase(text: string) {
+  return text.split(/(\*[^*]+\*)/g).map((part, i) => {
+    const marked = part.length > 2 && part.startsWith('*') && part.endsWith('*')
+    return (
+      <span
+        key={i}
+        className={
+          marked
+            ? 'text-accent-deep underline decoration-[3px] underline-offset-[6px] decoration-accent/40'
+            : undefined
+        }
+      >
+        {marked ? part.slice(1, -1) : part}
+      </span>
+    )
+  })
+}
 
 export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps) {
   const [text, setText] = useState('')
@@ -46,9 +63,9 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
     >
       <h1
         id="dump-heading"
-        className="font-display text-[1.8rem] leading-[1.15] sm:text-[2.5rem] sm:leading-[1.1] text-ink tracking-[-0.01em] text-balance text-center"
+        className="font-display text-[1.8rem] leading-[1.18] sm:text-[2.5rem] sm:leading-[1.14] text-ink tracking-[-0.01em] text-balance text-center"
       >
-        {phrase}
+        {renderPhrase(phrase)}
       </h1>
 
       <form
@@ -63,16 +80,16 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
           {/* the "pile in your head": faint cards stacked behind the input */}
           <div aria-hidden className="dump-ghost dump-ghost-2" />
           <div aria-hidden className="dump-ghost dump-ghost-1" />
-          <div className="relative z-[1] rounded-[1.4rem] bg-surface border border-line shadow-[var(--shadow-soft)] transition focus-within:border-accent/55 focus-within:shadow-[var(--shadow-card)]">
+          <div className="dump-glow relative z-[1] rounded-[1.3rem] bg-surface border border-line transition focus-within:border-accent/60">
             <textarea
               autoFocus
               value={text}
               onChange={(e) => setText(e.target.value)}
-              rows={6}
+              rows={3}
               maxLength={MAX}
               placeholder={PLACEHOLDER}
               aria-label="Brain dump"
-              className="w-full resize-none rounded-[1.4rem] bg-transparent px-6 py-5 text-ink text-lg leading-relaxed placeholder:text-faint/55 outline-none"
+              className="w-full resize-none rounded-[1.3rem] bg-transparent px-5 py-4 text-ink text-base leading-relaxed placeholder:text-faint/55 outline-none"
             />
           </div>
         </div>
@@ -90,16 +107,16 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
               onClick={toggle}
               aria-pressed={listening}
               aria-label={listening ? 'Stop voice input' : 'Speak instead of typing'}
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+              className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-5 py-2.5 text-base font-medium transition ${
                 listening
                   ? 'border-accent bg-accent-soft text-accent-deep'
-                  : 'border-line text-muted hover:text-ink hover:border-ink/25'
+                  : 'speak-glow border-accent/30 bg-accent-soft/50 text-accent-deep hover:bg-accent-soft'
               }`}
             >
               <svg
                 viewBox="0 0 24 24"
-                width="14"
-                height="14"
+                width="18"
+                height="18"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"

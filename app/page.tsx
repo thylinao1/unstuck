@@ -9,6 +9,7 @@ import { FocusCard } from '@/components/FocusCard'
 import { MomentumMeter } from '@/components/MomentumMeter'
 import { SupportCard } from '@/components/SupportCard'
 import { clearSession, loadSession, saveSession, type StoredSession } from '@/lib/storage'
+import { addCleared, loadStats } from '@/lib/stats'
 
 const ENERGY_RANK: Record<Energy, number> = { low: 0, med: 1, high: 2 }
 // Energy is a protective ceiling: never surface something you're too drained
@@ -28,6 +29,7 @@ export default function Home() {
   const [support, setSupport] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   const [savedSession, setSavedSession] = useState<StoredSession | null>(null)
+  const [lifetimeCleared, setLifetimeCleared] = useState(0)
 
   // Whether the last view change was an "advance" (new card to act on) or a
   // "pick" (time/energy toggle) — drives whether focus moves to the new card,
@@ -40,6 +42,7 @@ export default function Home() {
     const session = loadSession()
     /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration from localStorage, which is unavailable during SSR */
     if (session && session.items.length > 0) setSavedSession(session)
+    setLifetimeCleared(loadStats().cleared)
     setHydrated(true)
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
@@ -123,6 +126,7 @@ export default function Home() {
     if (!current) return
     setLastAction('advance')
     setDoneIds((prev) => [...prev, current.id])
+    setLifetimeCleared(addCleared(1)) // calm gamification: a count that only grows
   }
 
   function skipCurrent() {
@@ -232,15 +236,24 @@ export default function Home() {
 
         {!loading && view === 'done' && (
           <section className="rise w-full max-w-md text-center flex flex-col items-center gap-6">
-            <div
-              aria-hidden
-              className="h-1.5 w-24 rounded-full bg-gradient-to-r from-accent to-accent-deep"
-            />
+            <div className="relative flex items-center justify-center">
+              <span aria-hidden className="celebrate absolute h-24 w-24 rounded-full bg-accent-soft/60 blur-xl" />
+              <span
+                aria-hidden
+                className="celebrate relative h-1.5 w-24 rounded-full bg-gradient-to-r from-accent to-accent-deep"
+              />
+            </div>
             <h2 className="font-display text-4xl text-ink">Head cleared.</h2>
             <p className="text-muted text-lg leading-relaxed">
               {items.length} {items.length === 1 ? 'thing' : 'things'}, cleared one
               small step at a time. Momentum is only ever this, repeated.
             </p>
+            {lifetimeCleared > 0 && (
+              <p className="text-sm text-faint">
+                {lifetimeCleared} {lifetimeCleared === 1 ? 'step' : 'steps'} cleared with
+                Unstuck, and counting.
+              </p>
+            )}
             <button
               onClick={reset}
               className="rounded-full bg-accent px-7 py-4 text-base font-medium text-white shadow-[var(--shadow-soft)] transition hover:bg-accent-deep active:scale-[0.99]"

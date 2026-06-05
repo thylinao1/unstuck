@@ -117,6 +117,44 @@ body::before {
   opacity: 0.4;
 }
 
+/* Lightly glowing contour on the (now smaller) brain-dump input. */
+.dump-glow {
+  box-shadow:
+    var(--shadow-soft),
+    0 0 0 1px oklch(0.575 0.152 38 / 0.1),
+    0 0 22px -6px oklch(0.6 0.15 40 / 0.26);
+}
+.dump-glow:focus-within {
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 1px oklch(0.575 0.152 38 / 0.28),
+    0 0 30px -6px oklch(0.6 0.15 40 / 0.4);
+}
+
+/* Soft halo on the idle Speak button, the primary voice-first input. */
+.speak-glow {
+  box-shadow: 0 0 16px -3px oklch(0.6 0.15 40 / 0.3);
+}
+
+/* Calm celebration when the head is finally cleared. */
+@keyframes celebrate {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.celebrate {
+  animation: celebrate 700ms var(--ease-soft) both;
+}
+
 /* Mic icon while dictating: a soft pulse so "listening" reads at a glance. */
 @keyframes mic-pulse {
   0%,
@@ -162,7 +200,8 @@ body::before {
   .unstuck-card,
   .rise,
   .breath-orb,
-  .mic-pulse {
+  .mic-pulse,
+  .celebrate {
     animation: none;
   }
   *,
