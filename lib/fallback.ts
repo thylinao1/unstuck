@@ -19,20 +19,23 @@ interface Hint {
   step: string
   minutes: number
   energy: Energy
+  why: string
 }
 
 const HINTS: ReadonlyArray<Hint> = [
-  { test: /\b(email|reply|respond|message|dm)\b/i, step: 'Open the thread and write one sentence back.', minutes: 2, energy: 'low' },
-  { test: /\b(call|phone|ring|dial)\b/i, step: 'Find the number and put it on screen, ready to dial.', minutes: 2, energy: 'med' },
-  { test: /\b(write|draft|essay|report|blog|post|paper|cover letter)\b/i, step: 'Open the doc and write one ugly first sentence.', minutes: 2, energy: 'med' },
-  { test: /\b(pay|bill|invoice|rent|tax|budget|owe)\b/i, step: 'Open the account and check the exact amount due.', minutes: 3, energy: 'low' },
-  { test: /\b(book|schedule|appointment|reserve|dentist|doctor)\b/i, step: 'Open the booking page and pick one time slot.', minutes: 3, energy: 'low' },
-  { test: /\b(clean|tidy|laundry|dishes|wash|declutter|vacuum)\b/i, step: 'Set a 5-minute timer and clear one surface.', minutes: 5, energy: 'low' },
-  { test: /\b(read|study|review|learn|revise|research)\b/i, step: 'Open it and read only the first paragraph.', minutes: 5, energy: 'med' },
-  { test: /\b(gym|run|walk|exercise|workout|stretch)\b/i, step: 'Put your shoes on and step outside for two minutes.', minutes: 2, energy: 'med' },
-  { test: /\b(plan|organise|organize|decide|figure out|sort out)\b/i, step: 'Write the options down, one short line each.', minutes: 5, energy: 'med' },
-  { test: /\b(fix|bug|debug|code|build|deploy|ship)\b/i, step: 'Open the file and reproduce the problem once.', minutes: 5, energy: 'high' },
+  { test: /\b(email|reply|respond|message|dm)\b/i, step: 'Open the thread and write one sentence back.', minutes: 2, energy: 'low', why: 'One sentence closes the open loop nagging at you.' },
+  { test: /\b(call|phone|ring|dial)\b/i, step: 'Find the number and put it on screen, ready to dial.', minutes: 2, energy: 'med', why: 'Seeing the number ready makes dialing feel automatic.' },
+  { test: /\b(write|draft|essay|report|blog|post|paper|cover letter)\b/i, step: 'Open the doc and write one ugly first sentence.', minutes: 2, energy: 'med', why: 'A bad first line beats a blank page and kills the dread.' },
+  { test: /\b(pay|bill|invoice|rent|tax|budget|owe)\b/i, step: 'Open the account and check the exact amount due.', minutes: 3, energy: 'low', why: 'A real number turns a vague money worry into a task.' },
+  { test: /\b(book|schedule|appointment|reserve|dentist|doctor)\b/i, step: 'Open the booking page and pick one time slot.', minutes: 3, energy: 'low', why: 'Choosing one slot collapses the whole decision into a click.' },
+  { test: /\b(clean|tidy|laundry|dishes|wash|declutter|vacuum)\b/i, step: 'Set a 5-minute timer and clear one surface.', minutes: 5, energy: 'low', why: 'One cleared surface proves the mess is beatable.' },
+  { test: /\b(read|study|review|learn|revise|research)\b/i, step: 'Open it and read only the first paragraph.', minutes: 5, energy: 'med', why: 'The hardest part is opening it; one paragraph is past that.' },
+  { test: /\b(gym|run|walk|exercise|workout|stretch)\b/i, step: 'Put your shoes on and step outside for two minutes.', minutes: 2, energy: 'med', why: 'Once your shoes are on, the rest tends to follow.' },
+  { test: /\b(plan|organise|organize|decide|figure out|sort out)\b/i, step: 'Write the options down, one short line each.', minutes: 5, energy: 'med', why: 'Options on paper shrink from a worry to a choice.' },
+  { test: /\b(fix|bug|debug|code|build|deploy|ship)\b/i, step: 'Open the file and reproduce the problem once.', minutes: 5, energy: 'high', why: 'Reproducing it turns a scary bug into a known problem.' },
 ]
+
+const DEFAULT_WHY = 'Starting is the whole battle. A tiny step gets you moving.'
 
 const URGENT =
   /\b(today|urgent|asap|now|overdue|deadline|tonight|tomorrow|due|(mon|tues|wednes|thurs|fri|satur|sun)day)\b/i
@@ -69,6 +72,7 @@ export function triageFallback(brainDump: string): TriageItem[] {
       minutes: hint?.minutes ?? 2,
       energy: hint?.energy ?? 'low',
       priority: (urgent ? 100 : 50) - i,
+      why: hint?.why ?? DEFAULT_WHY,
     }
   })
 }

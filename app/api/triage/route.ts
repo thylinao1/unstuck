@@ -61,10 +61,12 @@ export async function POST(request: Request): Promise<Response> {
   const ai = await triageWithClaude(brainDump, minutes, energy)
   const items = ai?.items ?? triageFallback(brainDump)
   const source: 'ai' | 'fallback' = ai ? 'ai' : 'fallback'
-  // When the AI ran, trust its needsSupport judgment — it tells crisis apart from
-  // hyperbole ("this deadline is killing me") far better than any keyword net.
-  // The regex is the fallback-only backstop for when the AI is unavailable.
-  const support = ai ? ai.needsSupport : looksLikeCrisis(brainDump)
+  // Defense in depth: the model catches nuance and context, the high-precision
+  // regex is a backstop for the explicit phrases the model occasionally misses
+  // (e.g. "thinking about hurting myself"). The regex no longer fires on common
+  // hyperbole ("killing me", "can't go on"), so OR-ing it back does not
+  // reintroduce the false positives — it only closes the model's misses.
+  const support = (ai?.needsSupport ?? false) || looksLikeCrisis(brainDump)
 
   // One structured line per request → visible in Vercel Runtime Logs (fallback
   // rate, latency, volume) with no PII (length and counts only, never the text).

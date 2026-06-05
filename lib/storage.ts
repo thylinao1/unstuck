@@ -25,6 +25,7 @@ const storedSessionSchema = z.object({
       minutes: z.number(),
       energy: energySchema,
       priority: z.number(),
+      why: z.string().optional(),
     }),
   ),
   doneIds: z.array(z.string()),

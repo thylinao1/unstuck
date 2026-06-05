@@ -18,18 +18,6 @@ function energyMatch(item: TriageItem, energy: Energy): number {
   return item.energy === energy ? 1 : 0
 }
 
-// The state-aware reason this card is the one, in plain calm language. This is
-// what makes the matching legible instead of magic — the app surfaces a step
-// AND tells you why it fits the moment you're in.
-function fitLine(item: TriageItem, minutes: number, energy: Energy): string {
-  const fits = item.minutes <= minutes && ENERGY_RANK[item.energy] <= ENERGY_RANK[energy]
-  if (!fits) return 'A small stretch for right now, but the most unblocking thing left.'
-  if (item.energy === energy && energy === 'high') return "You have the energy. A good moment to take this one on."
-  if (item.energy === energy && energy === 'low') return 'Gentle enough for a low-energy moment, and it still moves things.'
-  if (item.energy === 'low') return 'Light enough to begin right now, whatever your energy.'
-  return `Fits the ${minutes} minutes and the energy you have right now.`
-}
-
 export default function Home() {
   const [items, setItems] = useState<TriageItem[]>([])
   const [doneIds, setDoneIds] = useState<string[]>([])
@@ -234,7 +222,6 @@ export default function Home() {
               key={current.id}
               item={current}
               fits={currentFits}
-              reason={fitLine(current, minutes, energy)}
               focusOnMount={lastAction === 'advance'}
               onDone={completeCurrent}
               onSkip={skipCurrent}

@@ -6,8 +6,6 @@ import type { TriageItem } from '@/lib/types'
 interface FocusCardProps {
   item: TriageItem
   fits: boolean
-  /** Plain-language reason this step fits the current time + energy. */
-  reason: string
   /** Move keyboard focus here on mount (true when advancing to a new card,
    *  false on a time/energy chip change so focus isn't yanked out of the picker). */
   focusOnMount: boolean
@@ -21,7 +19,7 @@ const ENERGY_LABEL: Record<TriageItem['energy'], string> = {
   high: 'high energy',
 }
 
-export function FocusCard({ item, fits, reason, focusOnMount, onDone, onSkip }: FocusCardProps) {
+export function FocusCard({ item, fits, focusOnMount, onDone, onSkip }: FocusCardProps) {
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
@@ -61,7 +59,12 @@ export function FocusCard({ item, fits, reason, focusOnMount, onDone, onSkip }: 
         )}
       </div>
 
-      <p className="-mt-1 text-sm text-faint italic">{reason}</p>
+      {item.why && (
+        <div className="-mt-1 flex flex-col gap-1">
+          <p className="text-xs uppercase tracking-[0.18em] text-faint">Why this?</p>
+          <p className="text-sm text-muted leading-relaxed">{item.why}</p>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 pt-2">
         <button

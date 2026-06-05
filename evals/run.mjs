@@ -39,6 +39,8 @@ function checkShape(items) {
     if (!(Number.isInteger(it.minutes) && it.minutes >= 1 && it.minutes <= 15)) errs.push(`minutes out of range: ${it.minutes}`)
     if (!['low', 'med', 'high'].includes(it.energy)) errs.push(`bad energy: ${it.energy}`)
     if (!(Number.isInteger(it.priority) && it.priority >= 0 && it.priority <= 100)) errs.push(`priority out of range: ${it.priority}`)
+    if (typeof it.why !== 'string' || it.why.trim().length < 1) errs.push('missing why')
+    else if (it.why.trim().toLowerCase() === String(it.nextAction).trim().toLowerCase()) errs.push('why restates action')
   }
   return errs
 }

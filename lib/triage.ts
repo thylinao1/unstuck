@@ -7,37 +7,48 @@ import { capitalizeFirst } from './text'
 // malformed output) so the caller falls back to the deterministic engine and
 // the demo never breaks. Server-side only — the key is read from the env here
 // and never reaches the client.
+//
+// Two passes: a draft triage, then a "skeptic" that challenges each step before
+// the user sees it (is this busywork they have already done? is the reason
+// true, or forced and preachy?). The skeptic is the thing that catches "write
+// down a phone number you already have" and replaces it with a real first step.
 
 const MODEL = 'claude-haiku-4-5' // cheap + fast; triage is a simple extraction task
 const MAX_ITEMS = 12
-const MAX_STEP_MINUTES = 15 // a "first step" should never exceed the smallest time slider
+const MAX_STEP_MINUTES = 15
+const SKEPTIC_ENABLED = process.env.DISABLE_SKEPTIC !== '1'
 
-// Validate whatever Claude returns before we trust it.
+// Parse leniently so one over-long field or large estimate can't reject the
+// whole result and drop everything to the dumb fallback. The "first step" cap
+// is enforced by clamping minutes in code (below), not by rejecting here.
 const claudeOutputSchema = z.object({
   items: z
     .array(
       z.object({
-        title: z.string().min(1).max(120),
-        nextAction: z.string().min(1).max(200),
-        minutes: z.number().int().min(1).max(MAX_STEP_MINUTES),
+        title: z.string().min(1).max(200),
+        nextAction: z.string().min(1).max(300),
+        minutes: z.number().int().min(0).max(180),
         energy: z.enum(['low', 'med', 'high']),
         priority: z.number().int().min(0).max(100),
+        why: z.string().min(1).max(240),
       }),
     )
     .max(MAX_ITEMS),
-  // Set by the model when the dump shows self-harm / crisis / medical-emergency
-  // signals. The route turns this into a calm support response.
   needsSupport: z.boolean().optional(),
 })
+
+type RawItem = z.infer<typeof claudeOutputSchema>['items'][number]
 
 const SYSTEM_PROMPT = `You are the triage engine for Unstuck, a tool that helps overwhelmed people take one small action instead of freezing.
 
 A user gives you a messy "brain dump" of everything on their mind. Your job:
 - Split it into distinct items. Ignore filler; merge obvious duplicates.
 - For EACH item, write the single smallest physical NEXT ACTION: a concrete 2-to-5-minute first step, not the whole task. Start with a verb. Make it so small it feels easy to begin.
+- The step must move the real task forward. Never propose busywork the user has almost certainly already done (for example "write down a phone number you already have"). If a task is scary (a hard call, a bill), the first step should reduce the dread, for example drafting the one sentence they will open with.
 - Estimate "minutes" for that first step (usually 2-5, never more than ${MAX_STEP_MINUTES}).
 - Estimate the "energy" the step needs: "low", "med", or "high".
 - Set "priority" 0-100: higher for anything time-sensitive, blocking, or anxiety-driving.
+- Write "why": one short line (under 14 words) on why THIS step helps. Use a real reason from psychology or plain common sense. Never restate the action. Never be preachy.
 
 Safety:
 - If the dump shows any sign of self-harm, suicidal thoughts, abuse, or a medical emergency, set "needsSupport" to true. Still triage the ordinary, non-crisis items normally. Do not turn the crisis itself into a task.
@@ -45,12 +56,24 @@ Safety:
 Rules:
 - nextAction must be a tiny first step ("Open the doc and write one ugly sentence"), never the whole task ("Write the essay").
 - Keep titles short and echo the user's own words.
-- Write every field — titles AND next actions — in the same language the user wrote their brain dump in.
+- Write every field — titles, next actions, and why lines — in the same language the user wrote their brain dump in.
 - Calm, plain language. No emoji. Return at most ${MAX_ITEMS} items.`
+
+const SKEPTIC_PROMPT = `You are a sharp, kind skeptic reviewing an anti-overwhelm app's draft output before a real, overwhelmed user sees it. You get the original brain dump and a list of drafted steps (title, nextAction, minutes, energy, priority, why).
+
+LANGUAGE (critical): return every field in the SAME language as the user's brain dump. If the dump and draft are in French, every title, nextAction, and why you return must be in French. Never translate to English.
+
+Challenge every item and return a corrected full list:
+- BUSYWORK: if a nextAction is something the user has almost certainly already done (classic example: "write down a phone number you already have", "make a list of what you owe"), replace it with a genuine smallest first step that reduces the dread or actually unblocks the task (for a scary call: draft the single opening sentence; for a bill with no money: write the one line asking for a payment plan).
+- TOO BIG: if a nextAction is really the whole task, shrink it to a true 2-to-5-minute first step.
+- THE WHY: if a "why" is false, circular, obvious, forced, preachy, or reads funny (over-psychologising a simple task), rewrite it as the plainest true reason in under 14 words. Plain common sense beats a stretched psychology claim.
+- Keep titles unchanged. Keep anything that is already good. Keep the same language as the user.
+
+Return the full corrected list via record_triage, same shape, with every field including "why".`
 
 const TOOL: Anthropic.Tool = {
   name: 'record_triage',
-  description: 'Record the triaged list of items, each with its smallest next action.',
+  description: 'Record the triaged list of items, each with its smallest next action and a one-line reason it helps.',
   input_schema: {
     type: 'object',
     properties: {
@@ -67,8 +90,9 @@ const TOOL: Anthropic.Tool = {
             minutes: { type: 'integer', description: 'Estimated minutes for the next step' },
             energy: { type: 'string', enum: ['low', 'med', 'high'] },
             priority: { type: 'integer', description: '0-100, higher = more unblocking or urgent' },
+            why: { type: 'string', description: 'One short line on why this step helps; never restate the action' },
           },
-          required: ['title', 'nextAction', 'minutes', 'energy', 'priority'],
+          required: ['title', 'nextAction', 'minutes', 'energy', 'priority', 'why'],
         },
       },
       needsSupport: {
@@ -92,10 +116,52 @@ function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 8)
 }
 
-// One structured line to stderr so Vercel Runtime Logs show why we degraded,
-// instead of a silent swap to the fallback engine.
 function logFallback(reason: string, extra?: Record<string, unknown>): void {
   console.warn(JSON.stringify({ at: 'triage.fallback', reason, ...extra }))
+}
+
+interface RawResult {
+  items: RawItem[]
+  needsSupport: boolean
+}
+
+// One forced tool call. Returns the parsed raw items (pre id-mapping) or null.
+async function runToolCall(
+  client: Anthropic,
+  system: string,
+  userContent: string,
+  label: string,
+): Promise<RawResult | null> {
+  const message = await client.messages.create({
+    model: MODEL,
+    max_tokens: 2048,
+    temperature: 0,
+    system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+    tools: [TOOL],
+    tool_choice: { type: 'tool', name: 'record_triage' },
+    messages: [{ role: 'user', content: userContent }],
+  })
+
+  const toolUse = message.content.find((block) => block.type === 'tool_use')
+  if (!toolUse || toolUse.type !== 'tool_use') {
+    logFallback('no-tool-use', { label })
+    return null
+  }
+  const parsed = claudeOutputSchema.safeParse(toolUse.input)
+  if (!parsed.success) {
+    logFallback('schema-invalid', {
+      label,
+      issue: parsed.error.issues[0]?.message,
+      path: parsed.error.issues[0]?.path?.join('.'),
+    })
+    return null
+  }
+  if (message.usage) {
+    console.log(
+      JSON.stringify({ at: 'triage.usage', label, inTokens: message.usage.input_tokens, outTokens: message.usage.output_tokens, items: parsed.data.items.length }),
+    )
+  }
+  return { items: parsed.data.items, needsSupport: parsed.data.needsSupport ?? false }
 }
 
 export interface TriageResult {
@@ -111,77 +177,54 @@ export async function triageWithClaude(
   const client = getClient()
   if (!client) {
     logFallback('no-key')
-    return null // no key configured → caller uses the deterministic engine
+    return null
   }
 
   try {
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 2048,
-      temperature: 0, // extraction task — pin it so the same dump is reproducible
-      system: [
-        {
-          type: 'text',
-          text: SYSTEM_PROMPT,
-          // Caching only engages once the cached prefix passes the model's
-          // minimum; a silent no-op below that. Kept so it activates if the
-          // prompt grows. Not claimed as an active cost optimization.
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      tools: [TOOL],
-      tool_choice: { type: 'tool', name: 'record_triage' },
-      messages: [
-        {
-          role: 'user',
-          content: `I have about ${minutes} minutes and ${energy} energy right now.\n\nBrain dump:\n${brainDump}`,
-        },
-      ],
-    })
-
-    const toolUse = message.content.find((block) => block.type === 'tool_use')
-    if (!toolUse || toolUse.type !== 'tool_use') {
-      logFallback('no-tool-use')
-      return null
-    }
-
-    const parsed = claudeOutputSchema.safeParse(toolUse.input)
-    if (!parsed.success) {
-      logFallback('schema-invalid')
-      return null
-    }
-
-    const needsSupport = parsed.data.needsSupport ?? false
-    const items: TriageItem[] = parsed.data.items.map((item, i) => ({
-      ...item,
-      // Title echoes the user's words, so keep their exact casing (iPhone, eBay).
-      // Only the generated next action gets a clean leading capital.
-      nextAction: capitalizeFirst(item.nextAction),
-      id: `c${i}-${slug(item.title)}`,
-    }))
-
-    // Empty AND no crisis → nothing to act on; let the fallback try instead.
-    if (items.length === 0 && !needsSupport) {
+    const draft = await runToolCall(
+      client,
+      SYSTEM_PROMPT,
+      `I have about ${minutes} minutes and ${energy} energy right now.\n\nBrain dump:\n${brainDump}`,
+      'draft',
+    )
+    if (!draft) return null
+    if (draft.items.length === 0 && !draft.needsSupport) {
       logFallback('empty-output')
       return null
     }
 
-    if (message.usage) {
-      console.log(
-        JSON.stringify({
-          at: 'triage.usage',
-          inTokens: message.usage.input_tokens,
-          outTokens: message.usage.output_tokens,
-          items: items.length,
-          needsSupport,
-        }),
-      )
+    // The skeptic pass. Skipped on a crisis dump (the support card is what
+    // matters there) and on empty output. Any failure falls back to the draft,
+    // so the second call can never break the result.
+    let finalItems = draft.items
+    if (SKEPTIC_ENABLED && draft.items.length > 0 && !draft.needsSupport) {
+      const skepticInput = `Original brain dump:\n${brainDump}\n\nDrafted steps to review (JSON):\n${JSON.stringify(
+        draft.items.map((it) => ({
+          title: it.title,
+          nextAction: it.nextAction,
+          minutes: it.minutes,
+          energy: it.energy,
+          priority: it.priority,
+          why: it.why,
+        })),
+      )}`
+      const refined = await runToolCall(client, SKEPTIC_PROMPT, skepticInput, 'skeptic')
+      if (refined && refined.items.length > 0) finalItems = refined.items
     }
 
-    return { items, needsSupport }
+    const items: TriageItem[] = finalItems.map((item, i) => ({
+      title: item.title,
+      nextAction: capitalizeFirst(item.nextAction),
+      // Clamp into [1, cap] instead of rejecting a 0 or an over-large estimate.
+      minutes: Math.max(1, Math.min(item.minutes, MAX_STEP_MINUTES)),
+      energy: item.energy,
+      priority: item.priority,
+      why: item.why,
+      id: `c${i}-${slug(item.title)}`,
+    }))
+
+    return { items, needsSupport: draft.needsSupport }
   } catch (err: unknown) {
-    // Any API/parse/network error → fall back to the deterministic engine,
-    // but say WHY in the logs (rate-limit, 5xx, network) instead of swallowing.
     const reason = err instanceof Error ? err.name : 'unknown'
     const status = (err as { status?: number })?.status
     logFallback('api-error', { reason, status })

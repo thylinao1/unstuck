@@ -18,6 +18,10 @@ export interface TriageItem {
   energy: Energy
   /** Higher = more unblocking / more urgent. Used to pick what to surface. */
   priority: number
+  /** One short line on WHY this step helps (psychology, neuroscience, or plain
+   *  common sense), validated by a skeptic pass. Optional for resilience with
+   *  sessions saved by an older version. */
+  why?: string
 }
 
 /** What the client sends to POST /api/triage. */

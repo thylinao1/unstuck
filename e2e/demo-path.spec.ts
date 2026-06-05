@@ -29,9 +29,9 @@ test('dump -> one card with a reason -> complete advances momentum -> head clear
   await page.getByLabel('Brain dump', { exact: true }).fill('book the dentist\nreply to the landlord about the leak')
   await page.getByRole('button', { name: /begin/i }).click()
 
-  // Exactly one action surfaces at a time, with a plain-language reason it fits.
+  // Exactly one action surfaces at a time, with a "Why this?" reason.
   await expect(page.getByText('From your dump')).toBeVisible()
-  await expect(page.locator('article p.italic')).toBeVisible()
+  await expect(page.getByText('Why this?')).toBeVisible()
   await expect(page.getByText(/\d+ of \d+/)).toContainText('0 of')
 
   // Work through every card to the done state.
