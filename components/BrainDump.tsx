@@ -115,11 +115,7 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
             </button>
           )}
           <p id="dump-hint" className="text-sm text-faint/80">
-            {listening
-              ? interim || 'Say what is on your mind.'
-              : voiceSupported
-                ? 'Messy is fine. Type or speak, one thought per line.'
-                : 'Messy is fine. One thought per line works best.'}
+            {listening ? interim || 'Say what is on your mind.' : 'Messy is fine.'}
           </p>
         </div>
 
