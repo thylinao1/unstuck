@@ -6,6 +6,8 @@ import type { TriageItem } from '@/lib/types'
 interface FocusCardProps {
   item: TriageItem
   fits: boolean
+  /** Show the pre-generated bigger step (the user has energy and time). */
+  isBigger: boolean
   /** Move keyboard focus here on mount (true when advancing to a new card,
    *  false on a time/energy chip change so focus isn't yanked out of the picker). */
   focusOnMount: boolean
@@ -19,8 +21,14 @@ const ENERGY_LABEL: Record<TriageItem['energy'], string> = {
   high: 'high energy',
 }
 
-export function FocusCard({ item, fits, focusOnMount, onDone, onSkip }: FocusCardProps) {
+export function FocusCard({ item, fits, isBigger, focusOnMount, onDone, onSkip }: FocusCardProps) {
   const headingRef = useRef<HTMLHeadingElement>(null)
+
+  // The picker swaps between the tiny first step and the pre-generated bigger one.
+  const showBig = isBigger && Boolean(item.biggerAction)
+  const action = showBig ? (item.biggerAction as string) : item.nextAction
+  const mins = showBig ? (item.biggerMinutes ?? item.minutes) : item.minutes
+  const why = showBig ? (item.biggerWhy ?? item.why) : item.why
 
   useEffect(() => {
     // Mount only: the card remounts per surfaced action (keyed by id in the
@@ -42,27 +50,35 @@ export function FocusCard({ item, fits, focusOnMount, onDone, onSkip }: FocusCar
         tabIndex={-1}
         className="font-display text-[1.7rem] leading-snug sm:text-[2rem] text-ink text-balance outline-none"
       >
-        {item.nextAction}
+        {action}
       </h2>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="rounded-full bg-canvas border border-line px-3 py-1 text-muted tabular-nums">
-          {item.minutes} min
+          {mins} min
         </span>
-        <span className="rounded-full bg-canvas border border-line px-3 py-1 text-muted">
-          {ENERGY_LABEL[item.energy]}
-        </span>
-        {!fits && (
+        {showBig ? (
           <span className="rounded-full bg-accent-soft px-3 py-1 text-accent-deep">
-            a stretch for right now
+            a bigger move, you have the energy
           </span>
+        ) : (
+          <>
+            <span className="rounded-full bg-canvas border border-line px-3 py-1 text-muted">
+              {ENERGY_LABEL[item.energy]}
+            </span>
+            {!fits && (
+              <span className="rounded-full bg-accent-soft px-3 py-1 text-accent-deep">
+                a stretch for right now
+              </span>
+            )}
+          </>
         )}
       </div>
 
-      {item.why && (
+      {why && (
         <div className="-mt-1 flex flex-col gap-1">
           <p className="text-xs uppercase tracking-[0.18em] text-faint">Why this?</p>
-          <p className="text-sm text-muted leading-relaxed">{item.why}</p>
+          <p className="text-sm text-muted leading-relaxed">{why}</p>
         </div>
       )}
 

@@ -41,6 +41,11 @@ function checkShape(items) {
     if (!(Number.isInteger(it.priority) && it.priority >= 0 && it.priority <= 100)) errs.push(`priority out of range: ${it.priority}`)
     if (typeof it.why !== 'string' || it.why.trim().length < 1) errs.push('missing why')
     else if (it.why.trim().toLowerCase() === String(it.nextAction).trim().toLowerCase()) errs.push('why restates action')
+    if (it.biggerAction != null) {
+      if (typeof it.biggerAction !== 'string' || it.biggerAction.trim().length < 1) errs.push('empty biggerAction')
+      else if (it.biggerAction.trim().toLowerCase() === String(it.nextAction).trim().toLowerCase())
+        errs.push('biggerAction equals nextAction')
+    }
   }
   return errs
 }

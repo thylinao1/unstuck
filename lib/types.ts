@@ -22,6 +22,12 @@ export interface TriageItem {
    *  common sense), validated by a skeptic pass. Optional for resilience with
    *  sessions saved by an older version. */
   why?: string
+  /** A more substantial single step (~10 to 15 min) for when the user has
+   *  energy and time. Pre-generated at triage so the time/energy picker can
+   *  swap to it instantly, with no extra API call. */
+  biggerAction?: string
+  biggerMinutes?: number
+  biggerWhy?: string
 }
 
 /** What the client sends to POST /api/triage. */

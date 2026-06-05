@@ -94,6 +94,12 @@ export default function Home() {
     ? current.minutes <= minutes && ENERGY_RANK[current.energy] <= ENERGY_RANK[energy]
     : true
 
+  // When you have real energy and time, swap in the bigger step the AI already
+  // pre-generated. Instant, client-side, no extra API call.
+  const showBigger = current
+    ? energy === 'high' && minutes >= 15 && Boolean(current.biggerAction)
+    : false
+
   async function handleSubmit(text: string) {
     if (loading) return // guard against a fast double-submit
     setLoading(true)
@@ -212,7 +218,9 @@ export default function Home() {
       {/* Screen-reader announcer: reads the surfaced action whenever it changes,
           including on a time/energy chip toggle that swaps the card. */}
       <p className="sr-only" aria-live="polite">
-        {view === 'focus' && current ? `Next: ${current.nextAction}` : ''}
+        {view === 'focus' && current
+          ? `Next: ${showBigger ? current.biggerAction : current.nextAction}`
+          : ''}
       </p>
 
       <div className="flex-1 flex flex-col items-center justify-center py-12">
@@ -244,6 +252,7 @@ export default function Home() {
               key={current.id}
               item={current}
               fits={currentFits}
+              isBigger={showBigger}
               focusOnMount={lastAction === 'advance'}
               onDone={completeCurrent}
               onSkip={skipCurrent}

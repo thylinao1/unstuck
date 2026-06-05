@@ -31,6 +31,9 @@ const claudeOutputSchema = z.object({
         energy: z.enum(['low', 'med', 'high']),
         priority: z.number().int().min(0).max(100),
         why: z.string().min(1).max(240),
+        biggerAction: z.string().min(1).max(300).optional(),
+        biggerMinutes: z.number().int().min(0).max(180).optional(),
+        biggerWhy: z.string().min(1).max(240).optional(),
       }),
     )
     .max(MAX_ITEMS),
@@ -49,6 +52,7 @@ A user gives you a messy "brain dump" of everything on their mind. Your job:
 - Estimate the "energy" the step needs: "low", "med", or "high".
 - Set "priority" 0-100: higher for anything time-sensitive, blocking, or anxiety-driving.
 - Write "why": one short line (under 14 words) on why THIS step helps. Use a real reason from psychology or plain common sense. Never restate the action. Never be preachy.
+- Also write "biggerAction": a more substantial single step for when the user has energy and time, about 10 to 15 minutes. It is still ONE concrete step, more momentum than the tiny first step, never the whole task. Add "biggerMinutes" (10 to 15) and "biggerWhy" (one short line) for it.
 
 Safety:
 - If the dump shows any sign of self-harm, suicidal thoughts, abuse, or a medical emergency, set "needsSupport" to true. Still triage the ordinary, non-crisis items normally. Do not turn the crisis itself into a task.
@@ -67,9 +71,10 @@ Challenge every item and return a corrected full list:
 - BUSYWORK: if a nextAction is something the user has almost certainly already done (classic example: "write down a phone number you already have", "make a list of what you owe"), replace it with a genuine smallest first step that reduces the dread or actually unblocks the task (for a scary call: draft the single opening sentence; for a bill with no money: write the one line asking for a payment plan).
 - TOO BIG: if a nextAction is really the whole task, shrink it to a true 2-to-5-minute first step.
 - THE WHY: if a "why" is false, circular, obvious, forced, preachy, or reads funny (over-psychologising a simple task), rewrite it as the plainest true reason in under 14 words. Plain common sense beats a stretched psychology claim.
+- THE BIGGER STEP: each item also has a "biggerAction" (a more substantial single step, ~10 to 15 min) with "biggerMinutes" and "biggerWhy". Apply the same checks to it: no busywork, still one concrete step and not the whole task, true why. Keep BOTH the small step and the bigger step.
 - Keep titles unchanged. Keep anything that is already good. Keep the same language as the user.
 
-Return the full corrected list via record_triage, same shape, with every field including "why".`
+Return the full corrected list via record_triage, same shape, with every field including "why" and the bigger-step fields.`
 
 const TOOL: Anthropic.Tool = {
   name: 'record_triage',
@@ -91,6 +96,9 @@ const TOOL: Anthropic.Tool = {
             energy: { type: 'string', enum: ['low', 'med', 'high'] },
             priority: { type: 'integer', description: '0-100, higher = more unblocking or urgent' },
             why: { type: 'string', description: 'One short line on why this step helps; never restate the action' },
+            biggerAction: { type: 'string', description: 'A more substantial single step (~10-15 min) for when the user has energy and time' },
+            biggerMinutes: { type: 'integer', description: 'Estimated minutes for biggerAction (10-15)' },
+            biggerWhy: { type: 'string', description: 'One short line on why the bigger step helps' },
           },
           required: ['title', 'nextAction', 'minutes', 'energy', 'priority', 'why'],
         },
@@ -206,6 +214,9 @@ export async function triageWithClaude(
           energy: it.energy,
           priority: it.priority,
           why: it.why,
+          biggerAction: it.biggerAction,
+          biggerMinutes: it.biggerMinutes,
+          biggerWhy: it.biggerWhy,
         })),
       )}`
       const refined = await runToolCall(client, SKEPTIC_PROMPT, skepticInput, 'skeptic')
@@ -220,6 +231,14 @@ export async function triageWithClaude(
       energy: item.energy,
       priority: item.priority,
       why: item.why,
+      biggerAction: item.biggerAction ? capitalizeFirst(item.biggerAction) : undefined,
+      // The bigger step sits between 6 and the cap, so it is clearly more than
+      // the tiny first step but still fits the time pickers.
+      biggerMinutes:
+        item.biggerMinutes != null
+          ? Math.max(6, Math.min(item.biggerMinutes, MAX_STEP_MINUTES))
+          : undefined,
+      biggerWhy: item.biggerWhy,
       id: `c${i}-${slug(item.title)}`,
     }))
 
