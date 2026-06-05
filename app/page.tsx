@@ -23,6 +23,7 @@ import {
 import { clearSession, loadSession, saveSession, type StoredSession } from '@/lib/storage'
 import { addCleared, loadStats } from '@/lib/stats'
 import { DONE_PHRASES } from '@/lib/donePhrases'
+import { randomPraise } from '@/lib/microPraise'
 
 // Render a celebration line, giving the *marked* word the big animated treatment.
 function renderDone(text: string) {
@@ -59,6 +60,8 @@ export default function Home() {
   const [nudgeBanner, setNudgeBanner] = useState<string | null>(null)
   const [nudgeTick, setNudgeTick] = useState(0)
   const [burst, setBurst] = useState(0)
+  const [doneToast, setDoneToast] = useState<{ text: string; n: number } | null>(null)
+  const [showList, setShowList] = useState(false)
 
   // Whether the last view change was an "advance" (new card to act on) or a
   // "pick" (time/energy toggle) — drives whether focus moves to the new card,
@@ -104,6 +107,13 @@ export default function Home() {
     }, Math.min(delay, 2_147_483_000))
     return () => clearTimeout(id)
   }, [hydrated, nudgeTick])
+
+  // Clear the floating praise line shortly after it appears.
+  useEffect(() => {
+    if (!doneToast) return
+    const id = setTimeout(() => setDoneToast(null), 1400)
+    return () => clearTimeout(id)
+  }, [doneToast])
 
   const doneSet = useMemo(() => new Set(doneIds), [doneIds])
   const remaining = useMemo(
@@ -184,9 +194,12 @@ export default function Home() {
     if (!current) return
     setLastAction('advance')
     setBurst((b) => b + 1) // a little spark burst on each completed step
-    // Pick a fresh celebration line as the last step is cleared.
     if (remaining.length === 1) {
+      // Last one: go to the big celebration screen.
       setDonePhrase(DONE_PHRASES[Math.floor(Math.random() * DONE_PHRASES.length)])
+    } else {
+      // Mid-flow: a brief praise line floats up in the middle.
+      setDoneToast((prev) => ({ text: randomPraise(), n: (prev?.n ?? 0) + 1 }))
     }
     setDoneIds((prev) => [...prev, current.id])
     setLifetimeCleared(addCleared(1)) // calm gamification: a count that only grows
@@ -221,6 +234,7 @@ export default function Home() {
     setSupport(false)
     setError(null)
     setSavedSession(null)
+    setShowList(false)
   }
 
   function dismissSupport() {
@@ -251,12 +265,19 @@ export default function Home() {
           Unstuck
         </span>
         {items.length > 0 && !loading && (
-          <button
-            onClick={reset}
-            className="text-sm text-faint transition hover:text-ink"
-          >
-            Start over
-          </button>
+          <div className="flex items-center gap-4">
+            {view === 'focus' && (
+              <button
+                onClick={() => setShowList(true)}
+                className="text-sm text-faint transition hover:text-ink"
+              >
+                See all
+              </button>
+            )}
+            <button onClick={reset} className="text-sm text-faint transition hover:text-ink">
+              Start over
+            </button>
+          </div>
         )}
       </header>
 
@@ -307,6 +328,11 @@ export default function Home() {
         {!loading && view === 'focus' && current && (
           <section className="rise relative w-full max-w-xl flex flex-col gap-8">
             <Burst trigger={burst} />
+            {doneToast && (
+              <span key={doneToast.n} className="micro-praise font-display text-xl text-accent-deep">
+                {doneToast.text}
+              </span>
+            )}
             <EnergyPicker
               minutes={minutes}
               energy={energy}
@@ -359,6 +385,52 @@ export default function Home() {
           </section>
         )}
       </div>
+
+      {showList && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/20 px-4 py-6"
+          onClick={() => setShowList(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Your task list"
+            onClick={(e) => e.stopPropagation()}
+            className="rise w-full max-w-md max-h-[80dvh] overflow-y-auto rounded-[1.5rem] bg-surface border border-line shadow-[var(--shadow-card)] p-6 flex flex-col gap-5"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl text-ink">Your list</h2>
+              <span className="text-sm text-faint tabular-nums">
+                {doneIds.length} of {items.length} done
+              </span>
+            </div>
+            <ul className="flex flex-col gap-3">
+              {items.map((it) => {
+                const isDone = doneSet.has(it.id)
+                return (
+                  <li key={it.id} className="flex items-start gap-3">
+                    <span
+                      aria-hidden
+                      className={`mt-1 h-4 w-4 shrink-0 rounded-full border ${isDone ? 'bg-accent border-accent' : 'border-line'}`}
+                    />
+                    <span
+                      className={`text-base leading-snug ${isDone ? 'text-faint line-through' : 'text-ink'}`}
+                    >
+                      {it.title}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+            <button
+              onClick={() => setShowList(false)}
+              className="mx-auto rounded-full border border-line px-6 py-2.5 text-sm font-medium text-muted transition hover:text-ink hover:border-ink/25"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       <footer className="mx-auto w-full max-w-xl text-center text-xs text-faint/70">
         Unstuck · one small step at a time

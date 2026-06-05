@@ -155,7 +155,8 @@ body::before {
   animation: celebrate 700ms var(--ease-soft) both;
 }
 
-/* A small spark burst when a step is completed. */
+/* A small spark burst when a step is completed. Each direction is its own
+   keyframe (no var() in the transform) so it animates in Safari too. */
 .burst {
   position: absolute;
   left: 50%;
@@ -167,23 +168,46 @@ body::before {
 }
 .spark {
   position: absolute;
-  left: -4px;
-  top: -4px;
-  width: 8px;
-  height: 8px;
+  left: -3px;
+  top: -3px;
+  width: 6px;
+  height: 6px;
   border-radius: 9999px;
   background: var(--color-accent);
-  animation: spark 650ms var(--ease-soft) forwards;
+  opacity: 0;
 }
-@keyframes spark {
-  0% {
-    transform: translate(0, 0) scale(1);
-    opacity: 0.9;
-  }
-  100% {
-    transform: translate(var(--dx), var(--dy)) scale(0.2);
-    opacity: 0;
-  }
+.spark-0 { animation: sp0 620ms var(--ease-soft) forwards; }
+.spark-1 { animation: sp1 620ms var(--ease-soft) forwards; }
+.spark-2 { animation: sp2 620ms var(--ease-soft) forwards; }
+.spark-3 { animation: sp3 620ms var(--ease-soft) forwards; }
+.spark-4 { animation: sp4 620ms var(--ease-soft) forwards; }
+.spark-5 { animation: sp5 620ms var(--ease-soft) forwards; }
+.spark-6 { animation: sp6 620ms var(--ease-soft) forwards; }
+.spark-7 { animation: sp7 620ms var(--ease-soft) forwards; }
+@keyframes sp0 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(0, -52px) scale(0.2); opacity: 0; } }
+@keyframes sp1 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(44px, -26px) scale(0.2); opacity: 0; } }
+@keyframes sp2 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(52px, 12px) scale(0.2); opacity: 0; } }
+@keyframes sp3 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(31px, 44px) scale(0.2); opacity: 0; } }
+@keyframes sp4 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(-31px, 44px) scale(0.2); opacity: 0; } }
+@keyframes sp5 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(-52px, 12px) scale(0.2); opacity: 0; } }
+@keyframes sp6 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(-44px, -26px) scale(0.2); opacity: 0; } }
+@keyframes sp7 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(10px, -50px) scale(0.2); opacity: 0; } }
+
+/* A brief praise line that floats up in the middle on each completed step. */
+@keyframes praise {
+  0% { opacity: 0; transform: translate(-50%, 10px); }
+  18% { opacity: 1; transform: translate(-50%, 0); }
+  76% { opacity: 1; transform: translate(-50%, -2px); }
+  100% { opacity: 0; transform: translate(-50%, -16px); }
+}
+.micro-praise {
+  position: absolute;
+  left: 50%;
+  top: 36%;
+  z-index: 25;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: praise 1400ms var(--ease-soft) forwards;
 }
 
 /* The standout word in a celebration line: bigger, with a warm gradient that
@@ -260,7 +284,7 @@ body::before {
   .mic-pulse,
   .celebrate,
   .done-em,
-  .spark {
+  [class*='spark-'] {
     animation: none;
   }
   *,

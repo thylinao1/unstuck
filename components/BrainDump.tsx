@@ -14,13 +14,15 @@ interface BrainDumpProps {
 
 const MAX = 8000
 
-// Render a hero phrase. A *word* gets an accent underline; a _word_ drops a
-// little below the line; a ^word^ lifts a little above it, so the type plays.
+// Render a hero phrase so the type acts out the words. Markers:
+//   *word* accent underline · _word_ drops below the line · ^word^ lifts above
+//   ~word~ is set smaller · %word% is blurred (for "noise", "fog", "chaos")
 function renderPhrase(text: string) {
-  return text.split(/(\*[^*]+\*|_[^_]+_|\^[^^]+\^)/g).map((part, i) => {
+  return text.split(/(\*[^*]+\*|_[^_]+_|\^[^^]+\^|~[^~]+~|%[^%]+%)/g).map((part, i) => {
     if (part.length > 2) {
       const inner = part.slice(1, -1)
-      if (part[0] === '*')
+      const mark = part[0]
+      if (mark === '*')
         return (
           <span
             key={i}
@@ -29,15 +31,27 @@ function renderPhrase(text: string) {
             {inner}
           </span>
         )
-      if (part[0] === '_')
+      if (mark === '_')
         return (
           <span key={i} className="inline-block translate-y-[0.16em] text-accent-deep">
             {inner}
           </span>
         )
-      if (part[0] === '^')
+      if (mark === '^')
         return (
           <span key={i} className="inline-block -translate-y-[0.18em] text-accent-deep">
+            {inner}
+          </span>
+        )
+      if (mark === '~')
+        return (
+          <span key={i} className="text-[0.62em] text-muted">
+            {inner}
+          </span>
+        )
+      if (mark === '%')
+        return (
+          <span key={i} className="inline-block text-ink/85 blur-[2px]">
             {inner}
           </span>
         )
@@ -87,24 +101,24 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
         }}
         className="flex flex-col gap-4"
       >
-        {/* Voice is the primary, easiest way in: big and centred, above the box. */}
+        {/* Voice is the primary, easiest way in: a big round button, centred. */}
         {voiceSupported && (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-2.5">
             <button
               type="button"
               onClick={toggle}
               aria-pressed={listening}
               aria-label={listening ? 'Stop voice input' : 'Speak instead of typing'}
-              className={`inline-flex items-center gap-2.5 rounded-full border px-7 py-3.5 text-lg font-medium transition active:scale-[0.99] ${
+              className={`flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-full border-2 transition active:scale-[0.97] ${
                 listening
-                  ? 'border-accent bg-accent-soft text-accent-deep'
-                  : 'speak-glow border-accent/40 bg-accent-soft/60 text-accent-deep hover:bg-accent-soft'
+                  ? 'border-accent bg-accent text-white'
+                  : 'speak-glow border-accent/40 bg-accent-soft/70 text-accent-deep hover:bg-accent-soft'
               }`}
             >
               <svg
                 viewBox="0 0 24 24"
-                width="22"
-                height="22"
+                width="32"
+                height="32"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -116,26 +130,23 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
                 <path d="M5 11a7 7 0 0 0 14 0" />
                 <line x1="12" y1="18" x2="12" y2="21.5" />
               </svg>
-              {listening ? 'Listening' : 'Speak'}
             </button>
+            <span className="text-sm font-medium text-accent-deep">
+              {listening ? 'Listening…' : 'Speak'}
+            </span>
           </div>
         )}
 
-        <div className="relative">
-          {/* the "pile in your head": faint cards stacked behind the input */}
-          <div aria-hidden className="dump-ghost dump-ghost-2" />
-          <div aria-hidden className="dump-ghost dump-ghost-1" />
-          <div className="dump-glow relative z-[1] rounded-[1.3rem] bg-surface border border-line transition focus-within:border-accent/60">
-            <textarea
-              value={display}
-              onChange={(e) => setText(e.target.value)}
-              rows={2}
-              maxLength={MAX}
-              placeholder="What's on your mind?"
-              aria-label="Brain dump"
-              className="w-full resize-none rounded-[1.3rem] bg-transparent px-5 py-3.5 text-ink text-base leading-relaxed placeholder:text-faint/60 outline-none"
-            />
-          </div>
+        <div className="dump-glow rounded-[1.3rem] bg-surface border border-line transition focus-within:border-accent/60">
+          <textarea
+            value={display}
+            onChange={(e) => setText(e.target.value)}
+            rows={1}
+            maxLength={MAX}
+            placeholder="What's on your mind?"
+            aria-label="Brain dump"
+            className="w-full resize-none rounded-[1.3rem] bg-transparent px-5 py-3.5 text-ink text-base leading-relaxed placeholder:text-faint/60 outline-none"
+          />
         </div>
 
         {error && (
