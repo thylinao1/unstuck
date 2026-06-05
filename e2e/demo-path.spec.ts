@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('landing: hero renders and Begin is disabled until you type', async ({ page }) => {
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Overwhelm freezes you')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   const begin = page.getByRole('button', { name: /begin/i })
   await expect(begin).toBeDisabled()
   await page.getByLabel('Brain dump', { exact: true }).fill('book the dentist\nreply to the landlord about the leak')
@@ -63,7 +63,7 @@ test('a returning visitor lands on the hero, not mid-flow, and can resume', asyn
 
   // Reloading shows the hero (the whole pitch), with resume offered, NOT a stale card.
   await page.reload()
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Overwhelm freezes you')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   const resume = page.getByRole('button', { name: /resume where/i })
   await expect(resume).toBeVisible()
   await resume.click()

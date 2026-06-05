@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDictation } from './useDictation'
+import { HERO_PHRASES } from '@/lib/heroPhrases'
 
 interface BrainDumpProps {
   onSubmit: (text: string) => void
@@ -24,6 +25,15 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
   const hasText = text.trim().length > 0
   const canSubmit = hasText && !loading
 
+  // A different hero line on each open. Render a stable default first (SSR and
+  // first client paint), then swap to a random one after mount — the swap is
+  // hidden under the section's entrance animation.
+  const [phrase, setPhrase] = useState(HERO_PHRASES[0])
+  useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- random per-open, client-only to avoid a hydration mismatch */
+    setPhrase(HERO_PHRASES[Math.floor(Math.random() * HERO_PHRASES.length)])
+  }, [])
+
   const { supported: voiceSupported, listening, interim, toggle, stop } = useDictation(
     (finalText) =>
       setText((prev) => (prev.trim() ? `${prev.replace(/\s+$/, '')} ${finalText}` : finalText)),
@@ -32,24 +42,14 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
   return (
     <section
       aria-labelledby="dump-heading"
-      className="rise w-full max-w-xl mx-auto flex flex-col items-stretch gap-7"
+      className="rise w-full max-w-xl mx-auto flex flex-col items-stretch gap-8"
     >
-      <header className="text-center flex flex-col gap-4">
-        <p className="inline-flex items-center justify-center gap-2 text-xs uppercase tracking-[0.24em] text-faint">
-          <span className="unstuck-mark" aria-hidden />
-          An anti-freeze engine
-        </p>
-        <h1
-          id="dump-heading"
-          className="font-display text-[2.4rem] leading-[1.08] sm:text-6xl sm:leading-[1.04] text-ink tracking-[-0.01em] text-balance"
-        >
-          Overwhelm freezes you. One small step{' '}
-          <em className="italic font-normal text-accent-deep">thaws</em> it.
-        </h1>
-        <p className="text-faint text-lg leading-relaxed text-balance">
-          Empty the noise. What comes back is a single, doable beginning.
-        </p>
-      </header>
+      <h1
+        id="dump-heading"
+        className="font-display text-[1.8rem] leading-[1.15] sm:text-[2.5rem] sm:leading-[1.1] text-ink tracking-[-0.01em] text-balance text-center"
+      >
+        {phrase}
+      </h1>
 
       <form
         onSubmit={(e) => {
@@ -123,9 +123,9 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
           type="submit"
           disabled={!canSubmit}
           aria-describedby="dump-hint"
-          className={`group inline-flex items-center justify-center gap-2 rounded-full px-7 py-4 text-base font-medium transition ${
+          className={`group inline-flex w-full items-center justify-center gap-2 rounded-full px-8 py-5 text-lg font-medium transition ${
             hasText
-              ? `bg-accent text-white shadow-[var(--shadow-soft)] ${loading ? 'cursor-wait opacity-90' : 'hover:bg-accent-deep active:scale-[0.99]'}`
+              ? `bg-accent text-white shadow-[var(--shadow-card)] ${loading ? 'cursor-wait opacity-90' : 'hover:bg-accent-deep active:scale-[0.99]'}`
               : 'border border-line text-faint cursor-not-allowed'
           }`}
         >
