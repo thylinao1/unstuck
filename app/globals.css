@@ -155,6 +155,37 @@ body::before {
   animation: celebrate 700ms var(--ease-soft) both;
 }
 
+/* A small spark burst when a step is completed. */
+.burst {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+.spark {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  animation: spark 650ms var(--ease-soft) forwards;
+}
+@keyframes spark {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.2);
+    opacity: 0;
+  }
+}
+
 /* The standout word in a celebration line: bigger, with a warm gradient that
    slowly radiates across it. The one loud, playful moment in a calm app. */
 @keyframes done-shine {
@@ -228,7 +259,8 @@ body::before {
   .breath-orb,
   .mic-pulse,
   .celebrate,
-  .done-em {
+  .done-em,
+  .spark {
     animation: none;
   }
   *,

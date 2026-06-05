@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Energy, TriageItem, TriageResponse } from '@/lib/types'
 import { BrainDump } from '@/components/BrainDump'
 import { Breath } from '@/components/Breath'
+import { Burst } from '@/components/Burst'
 import { EnergyPicker } from '@/components/EnergyPicker'
 import { FocusCard } from '@/components/FocusCard'
 import { MomentumMeter } from '@/components/MomentumMeter'
@@ -57,6 +58,7 @@ export default function Home() {
   const [donePhrase, setDonePhrase] = useState(DONE_PHRASES[0])
   const [nudgeBanner, setNudgeBanner] = useState<string | null>(null)
   const [nudgeTick, setNudgeTick] = useState(0)
+  const [burst, setBurst] = useState(0)
 
   // Whether the last view change was an "advance" (new card to act on) or a
   // "pick" (time/energy toggle) — drives whether focus moves to the new card,
@@ -129,9 +131,11 @@ export default function Home() {
     : true
 
   // When you have real energy and time, swap in the bigger step the AI already
-  // pre-generated. Instant, client-side, no extra API call.
+  // pre-generated. Instant, client-side, no extra API call. High energy needs
+  // 15+ min; medium needs the full 30, so the picker visibly does something.
   const showBigger = current
-    ? energy === 'high' && minutes >= 15 && Boolean(current.biggerAction)
+    ? Boolean(current.biggerAction) &&
+      ((energy === 'high' && minutes >= 15) || (energy === 'med' && minutes >= 30))
     : false
 
   async function handleSubmit(text: string) {
@@ -179,6 +183,7 @@ export default function Home() {
   function completeCurrent() {
     if (!current) return
     setLastAction('advance')
+    setBurst((b) => b + 1) // a little spark burst on each completed step
     // Pick a fresh celebration line as the last step is cleared.
     if (remaining.length === 1) {
       setDonePhrase(DONE_PHRASES[Math.floor(Math.random() * DONE_PHRASES.length)])
@@ -300,7 +305,8 @@ export default function Home() {
         )}
 
         {!loading && view === 'focus' && current && (
-          <section className="rise w-full max-w-xl flex flex-col gap-8">
+          <section className="rise relative w-full max-w-xl flex flex-col gap-8">
+            <Burst trigger={burst} />
             <EnergyPicker
               minutes={minutes}
               energy={energy}

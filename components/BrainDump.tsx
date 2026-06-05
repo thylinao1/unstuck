@@ -14,26 +14,35 @@ interface BrainDumpProps {
 
 const MAX = 8000
 
-const PLACEHOLDER = `reply to Dana about the invoice
-the essay is due Friday
-figure out the trip budget`
-
-// Render a hero phrase, giving the *marked* word an accent underline.
+// Render a hero phrase. A *word* gets an accent underline; a _word_ drops a
+// little below the line; a ^word^ lifts a little above it, so the type plays.
 function renderPhrase(text: string) {
-  return text.split(/(\*[^*]+\*)/g).map((part, i) => {
-    const marked = part.length > 2 && part.startsWith('*') && part.endsWith('*')
-    return (
-      <span
-        key={i}
-        className={
-          marked
-            ? 'text-accent-deep underline decoration-[3px] underline-offset-[6px] decoration-accent/40'
-            : undefined
-        }
-      >
-        {marked ? part.slice(1, -1) : part}
-      </span>
-    )
+  return text.split(/(\*[^*]+\*|_[^_]+_|\^[^^]+\^)/g).map((part, i) => {
+    if (part.length > 2) {
+      const inner = part.slice(1, -1)
+      if (part[0] === '*')
+        return (
+          <span
+            key={i}
+            className="text-accent-deep underline decoration-[3px] underline-offset-[6px] decoration-accent/40"
+          >
+            {inner}
+          </span>
+        )
+      if (part[0] === '_')
+        return (
+          <span key={i} className="inline-block translate-y-[0.16em] text-accent-deep">
+            {inner}
+          </span>
+        )
+      if (part[0] === '^')
+        return (
+          <span key={i} className="inline-block -translate-y-[0.18em] text-accent-deep">
+            {inner}
+          </span>
+        )
+    }
+    return <span key={i}>{part}</span>
   })
 }
 
@@ -43,8 +52,7 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
   const canSubmit = hasText && !loading
 
   // A different hero line on each open. Render a stable default first (SSR and
-  // first client paint), then swap to a random one after mount — the swap is
-  // hidden under the section's entrance animation.
+  // first client paint), then swap to a random one after mount.
   const [phrase, setPhrase] = useState(HERO_PHRASES[0])
   useEffect(() => {
     /* eslint-disable-next-line react-hooks/set-state-in-effect -- random per-open, client-only to avoid a hydration mismatch */
@@ -56,6 +64,9 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
       setText((prev) => (prev.trim() ? `${prev.replace(/\s+$/, '')} ${finalText}` : finalText)),
   )
 
+  // What you say appears IN the box: the committed text plus the live phrase.
+  const display = listening && interim ? `${text}${text ? ' ' : ''}${interim}` : text
+
   return (
     <section
       aria-labelledby="dump-heading"
@@ -63,7 +74,7 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
     >
       <h1
         id="dump-heading"
-        className="font-display text-[1.8rem] leading-[1.18] sm:text-[2.5rem] sm:leading-[1.14] text-ink tracking-[-0.01em] text-balance text-center"
+        className="font-display text-[1.9rem] leading-[1.2] sm:text-[2.6rem] sm:leading-[1.16] text-ink tracking-[-0.01em] text-balance text-center"
       >
         {renderPhrase(phrase)}
       </h1>
@@ -76,47 +87,24 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
         }}
         className="flex flex-col gap-4"
       >
-        <div className="relative">
-          {/* the "pile in your head": faint cards stacked behind the input */}
-          <div aria-hidden className="dump-ghost dump-ghost-2" />
-          <div aria-hidden className="dump-ghost dump-ghost-1" />
-          <div className="dump-glow relative z-[1] rounded-[1.3rem] bg-surface border border-line transition focus-within:border-accent/60">
-            <textarea
-              autoFocus
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={3}
-              maxLength={MAX}
-              placeholder={PLACEHOLDER}
-              aria-label="Brain dump"
-              className="w-full resize-none rounded-[1.3rem] bg-transparent px-5 py-4 text-ink text-base leading-relaxed placeholder:text-faint/55 outline-none"
-            />
-          </div>
-        </div>
-
-        {error && (
-          <p role="alert" className="text-sm text-accent-deep text-center">
-            {error}
-          </p>
-        )}
-
-        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
-          {voiceSupported && (
+        {/* Voice is the primary, easiest way in: big and centred, above the box. */}
+        {voiceSupported && (
+          <div className="flex justify-center">
             <button
               type="button"
               onClick={toggle}
               aria-pressed={listening}
               aria-label={listening ? 'Stop voice input' : 'Speak instead of typing'}
-              className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-5 py-2.5 text-base font-medium transition ${
+              className={`inline-flex items-center gap-2.5 rounded-full border px-7 py-3.5 text-lg font-medium transition active:scale-[0.99] ${
                 listening
                   ? 'border-accent bg-accent-soft text-accent-deep'
-                  : 'speak-glow border-accent/30 bg-accent-soft/50 text-accent-deep hover:bg-accent-soft'
+                  : 'speak-glow border-accent/40 bg-accent-soft/60 text-accent-deep hover:bg-accent-soft'
               }`}
             >
               <svg
                 viewBox="0 0 24 24"
-                width="18"
-                height="18"
+                width="22"
+                height="22"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -130,11 +118,35 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
               </svg>
               {listening ? 'Listening' : 'Speak'}
             </button>
-          )}
-          <p id="dump-hint" className="text-sm text-faint/80">
-            {listening ? interim || 'Say what is on your mind.' : 'Messy is fine.'}
-          </p>
+          </div>
+        )}
+
+        <div className="relative">
+          {/* the "pile in your head": faint cards stacked behind the input */}
+          <div aria-hidden className="dump-ghost dump-ghost-2" />
+          <div aria-hidden className="dump-ghost dump-ghost-1" />
+          <div className="dump-glow relative z-[1] rounded-[1.3rem] bg-surface border border-line transition focus-within:border-accent/60">
+            <textarea
+              value={display}
+              onChange={(e) => setText(e.target.value)}
+              rows={2}
+              maxLength={MAX}
+              placeholder="What's on your mind?"
+              aria-label="Brain dump"
+              className="w-full resize-none rounded-[1.3rem] bg-transparent px-5 py-3.5 text-ink text-base leading-relaxed placeholder:text-faint/60 outline-none"
+            />
+          </div>
         </div>
+
+        {error && (
+          <p role="alert" className="text-sm text-accent-deep text-center">
+            {error}
+          </p>
+        )}
+
+        <p id="dump-hint" className="text-center text-sm text-faint/80">
+          {listening ? 'Listening…' : 'Type or speak. Messy is fine.'}
+        </p>
 
         <button
           type="submit"
@@ -148,10 +160,7 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
         >
           {loading ? 'Finding your first step…' : 'Begin'}
           {!loading && (
-            <span
-              className="transition-transform group-hover:translate-x-0.5"
-              aria-hidden
-            >
+            <span className="transition-transform group-hover:translate-x-0.5" aria-hidden>
               →
             </span>
           )}

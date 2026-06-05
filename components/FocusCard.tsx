@@ -15,10 +15,12 @@ interface FocusCardProps {
   onSkip: () => void
 }
 
+// Describes how demanding the STEP is (not the energy you picked), so it no
+// longer reads as a conflict with the energy chip you selected.
 const ENERGY_LABEL: Record<TriageItem['energy'], string> = {
-  low: 'low energy',
-  med: 'medium energy',
-  high: 'high energy',
+  low: 'easy',
+  med: 'moderate',
+  high: 'demanding',
 }
 
 export function FocusCard({ item, fits, isBigger, focusOnMount, onDone, onSkip }: FocusCardProps) {
