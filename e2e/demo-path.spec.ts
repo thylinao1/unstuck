@@ -43,16 +43,30 @@ test('dump -> one card with a reason -> complete advances momentum -> head clear
   await expect(page.getByRole('button', { name: 'Begin again' })).toBeVisible()
 })
 
-test('time and energy pickers are accessible radios and operate', async ({ page }) => {
+test('the effort slider operates and organized mode lists every task', async ({ page }) => {
   await page.getByLabel('Brain dump', { exact: true }).fill('clean the kitchen\nstart the essay due friday\ngo for a run')
   await page.getByRole('button', { name: /begin/i }).click()
   await expect(page.getByText('From your dump')).toBeVisible()
 
-  const low = page.getByRole('radio', { name: 'Low', exact: true })
-  await expect(low).toHaveAttribute('aria-checked', 'false')
-  await low.click()
-  await expect(low).toHaveAttribute('aria-checked', 'true')
-  // A card is still surfaced after re-picking energy (never a blank screen).
+  // The effort slider is an accessible range; sliding it never blanks the card.
+  const slider = page.getByRole('slider', { name: /effort/i })
+  await expect(slider).toBeVisible()
+  await slider.focus()
+  await slider.press('End') // most effort
+  await expect(page.locator('article h2')).toBeVisible()
+  await slider.press('Home') // least effort
+  await expect(page.locator('article h2')).toBeVisible()
+
+  // Organized mode shows the whole list; ticking one off advances momentum.
+  await page.getByRole('tab', { name: 'Organized' }).click()
+  const checks = page.getByRole('checkbox')
+  await expect(checks.first()).toBeVisible()
+  await expect(page.getByText(/\d+ of \d+/)).toContainText('0 of')
+  await checks.first().click()
+  await expect(page.getByText(/\d+ of \d+/)).toContainText('1 of')
+
+  // Back in Unstuck mode a card is still surfaced.
+  await page.getByRole('tab', { name: 'Unstuck' }).click()
   await expect(page.locator('article h2')).toBeVisible()
 })
 
@@ -92,4 +106,40 @@ test('a due reminder surfaces as a gentle banner and can be dismissed', async ({
   await expect(page.getByText(msg)).toBeVisible()
   await page.getByRole('button', { name: 'Dismiss reminder' }).click()
   await expect(page.getByText(msg)).toHaveCount(0)
+})
+
+// The completion celebration must NOT depend on CSS animation: it broke before
+// because reduced motion (and an unmounted CSS spark) left it invisible. It is
+// now a canvas drawn on the main thread, so it must fire even with reduced motion
+// on. We also assert the beat holds the current card before the next slides in.
+test.describe('completion celebration', () => {
+  test.use({ reducedMotion: 'reduce' })
+
+  test('confetti canvas fires under reduced motion, and a beat holds the card', async ({ page }) => {
+    await page
+      .getByLabel('Brain dump', { exact: true })
+      .fill('clean the kitchen\nstart the essay due friday\ngo for a run')
+    await page.getByRole('button', { name: /begin/i }).click()
+    await expect(page.getByText('From your dump')).toBeVisible()
+
+    // Beat: completing a mid-step holds the same card (aria-busy) for a moment
+    // and does not advance momentum immediately, so the praise cannot collide.
+    const momentum = page.getByText(/\d+ of \d+/)
+    await expect(momentum).toContainText('0 of')
+    await page.getByRole('button', { name: 'Done', exact: true }).click()
+    await expect(page.locator('article[aria-busy="true"]')).toBeVisible()
+    await expect(momentum).toContainText('0 of') // still held during the beat
+
+    // Run to the head-cleared screen.
+    for (let i = 0; i < 12; i++) {
+      const done = page.getByRole('button', { name: 'Done', exact: true })
+      if (!(await done.isVisible().catch(() => false))) break
+      await done.click()
+    }
+    await expect(page.getByRole('button', { name: 'Begin again' })).toBeVisible()
+
+    // The celebration canvas is present even though Reduce Motion is on. This is
+    // the regression that used to fail silently on real Safari.
+    await expect(page.locator('canvas')).toBeAttached({ timeout: 5000 })
+  })
 })

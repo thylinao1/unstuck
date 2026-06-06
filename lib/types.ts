@@ -28,6 +28,12 @@ export interface TriageItem {
   biggerAction?: string
   biggerMinutes?: number
   biggerWhy?: string
+  /** When the item is a scheduled event with a clear date and time, the local
+   *  start as ISO 8601 with no zone (e.g. "2026-06-09T15:00"), so the card can
+   *  offer "Add to calendar". Absent for anything not tied to a specific time. */
+  eventStart?: string
+  /** Optional local end; when absent the calendar event defaults to one hour. */
+  eventEnd?: string
 }
 
 /** What the client sends to POST /api/triage. */
@@ -37,6 +43,9 @@ export interface TriageRequest {
   minutes?: number
   /** Energy the user has right now (optional hint). */
   energy?: Energy
+  /** The user's local "now" as ISO 8601 (e.g. "2026-06-09T14:05"), so the AI can
+   *  resolve "3 PM", "Friday", or "tomorrow" into a real calendar time. */
+  now?: string
 }
 
 /** What POST /api/triage returns. */

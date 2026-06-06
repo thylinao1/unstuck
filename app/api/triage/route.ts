@@ -18,6 +18,9 @@ const requestSchema = z.object({
   brainDump: z.string().min(1, 'Write something first.').max(8000),
   minutes: z.number().int().positive().max(600).optional(),
   energy: z.enum(['low', 'med', 'high']).optional(),
+  // The client's local "now", so the AI can resolve "3pm" or "Friday" to a real
+  // calendar time. Bounded and optional; never trusted beyond date parsing.
+  now: z.string().max(40).optional(),
 })
 
 function clientIp(request: Request): string {
@@ -38,7 +41,7 @@ export async function POST(request: Request): Promise<Response> {
   const limit = rateLimit(clientIp(request))
   if (!limit.ok) {
     return Response.json(
-      { error: 'One moment — a few too many requests. Try again shortly.' },
+      { error: 'One moment. A few too many requests. Try again shortly.' },
       { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
     )
   }
@@ -55,10 +58,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: friendlyError(parsed.error) }, { status: 400 })
   }
 
-  const { brainDump, minutes = 15, energy = 'med' } = parsed.data
+  const { brainDump, minutes = 15, energy = 'med', now } = parsed.data
   const started = Date.now()
 
-  const ai = await triageWithClaude(brainDump, minutes, energy)
+  const ai = await triageWithClaude(brainDump, minutes, energy, now)
   const items = ai?.items ?? triageFallback(brainDump)
   const source: 'ai' | 'fallback' = ai ? 'ai' : 'fallback'
   // Defense in depth: the model catches nuance and context, the high-precision

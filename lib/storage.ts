@@ -1,7 +1,7 @@
 'use client'
 
 import { z } from 'zod'
-import type { Energy, TriageItem } from './types'
+import type { TriageItem } from './types'
 
 // Local-first persistence. No accounts, no backend — the session lives in the
 // browser so judges hit zero signup friction and the app works offline.
@@ -29,19 +29,23 @@ const storedSessionSchema = z.object({
       biggerAction: z.string().optional(),
       biggerMinutes: z.number().optional(),
       biggerWhy: z.string().optional(),
+      eventStart: z.string().optional(),
+      eventEnd: z.string().optional(),
     }),
   ),
   doneIds: z.array(z.string()),
-  minutes: z.number(),
-  energy: energySchema,
+  // Picker fields are legacy (replaced by the effort slider); kept optional so an
+  // older saved session still validates. effort is the slider position, 0 to 1.
+  minutes: z.number().optional(),
+  energy: energySchema.optional(),
+  effort: z.number().optional(),
   savedAt: z.number().optional(),
 })
 
 export interface StoredSession {
   items: TriageItem[]
   doneIds: string[]
-  minutes: number
-  energy: Energy
+  effort?: number
   savedAt?: number
 }
 

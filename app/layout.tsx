@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Geist, Newsreader } from 'next/font/google'
+import { Geist, Great_Vibes, Newsreader } from 'next/font/google'
 import './globals.css'
 
 const geistSans = Geist({
@@ -11,6 +11,15 @@ const newsreader = Newsreader({
   variable: '--font-newsreader',
   subsets: ['latin'],
   style: ['normal', 'italic'],
+})
+
+// One ornamental script, used only for the occasional pretty word in a hero line
+// (the "one" in "start with one"). Self-hosted by next/font, so no extra request
+// and no CSP change. Great Vibes ships a single 400 weight.
+const greatVibes = Great_Vibes({
+  variable: '--font-script',
+  subsets: ['latin'],
+  weight: '400',
 })
 
 export const metadata: Metadata = {
@@ -25,7 +34,7 @@ export const metadata: Metadata = {
     url: 'https://unstuck-theta.vercel.app',
     siteName: 'Unstuck',
     type: 'website',
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'Unstuck — one calm next step from your brain dump' }],
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'Unstuck, one calm next step from your brain dump' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -44,7 +53,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${newsreader.variable} h-full`}
+      className={`${geistSans.variable} ${newsreader.variable} ${greatVibes.variable} h-full`}
     >
       <body className="min-h-full antialiased">{children}</body>
     </html>

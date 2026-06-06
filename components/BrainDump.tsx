@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDictation } from './useDictation'
 import { HERO_PHRASES } from '@/lib/heroPhrases'
 
@@ -13,51 +13,72 @@ interface BrainDumpProps {
 }
 
 const MAX = 8000
+// How tall the input may grow before it starts scrolling (about six lines).
+const INPUT_MAX_HEIGHT = 168
 
-// Render a hero phrase so the type acts out the words. Markers:
-//   *word* accent underline · _word_ drops below the line · ^word^ lifts above
-//   ~word~ is set smaller · %word% is blurred (for "noise", "fog", "chaos")
-function renderPhrase(text: string) {
-  return text.split(/(\*[^*]+\*|_[^_]+_|\^[^^]+\^|~[^~]+~|%[^%]+%)/g).map((part, i) => {
-    if (part.length > 2) {
-      const inner = part.slice(1, -1)
-      const mark = part[0]
-      if (mark === '*')
-        return (
-          <span
-            key={i}
-            className="text-accent-deep underline decoration-[3px] underline-offset-[6px] decoration-accent/40"
-          >
-            {inner}
-          </span>
-        )
-      if (mark === '_')
-        return (
-          <span key={i} className="inline-block translate-y-[0.16em] text-accent-deep">
-            {inner}
-          </span>
-        )
-      if (mark === '^')
-        return (
-          <span key={i} className="inline-block -translate-y-[0.18em] text-accent-deep">
-            {inner}
-          </span>
-        )
-      if (mark === '~')
-        return (
-          <span key={i} className="text-[0.62em] text-muted">
-            {inner}
-          </span>
-        )
-      if (mark === '%')
-        return (
-          <span key={i} className="inline-block text-ink/85 blur-[2px]">
-            {inner}
-          </span>
-        )
+// Structural classes per emphasis token. Color is resolved separately (see
+// heroColor) so composed treatments like "u blue" or "u sm" pick one sensible
+// color instead of fighting over Tailwind text-color utilities.
+const HERO_STRUCT: Record<string, string> = {
+  u: 'underline decoration-[3px] underline-offset-[6px] decoration-accent/40',
+  i: 'italic',
+  down: 'inline-block translate-y-[0.16em]',
+  up: 'inline-block -translate-y-[0.18em]',
+  sm: 'text-[0.62em]',
+  xs: 'text-[0.45em]',
+  xxs: 'text-[0.3em] opacity-50',
+  blur: 'inline-block text-ink/85 blur-[2px]',
+  caps: 'uppercase tracking-[0.04em]',
+  gap: 'ml-[1.1em]',
+  drip: 'hero-drip',
+  glass: 'hero-glass',
+  script: 'hero-script',
+}
+
+// One color wins, by priority, unless a treatment paints itself (blur/drip/glass).
+function heroColor(tokens: Set<string>): string {
+  if (tokens.has('blur') || tokens.has('drip') || tokens.has('glass')) return ''
+  if (tokens.has('blue')) return 'text-hero-blue'
+  if (tokens.has('red')) return 'text-hero-red'
+  if (tokens.has('u') || tokens.has('i') || tokens.has('down') || tokens.has('up')) {
+    return 'text-accent-deep'
+  }
+  if (tokens.has('sm') || tokens.has('xs') || tokens.has('xxs')) return 'text-muted'
+  return '' // caps / gap alone inherit the ink color
+}
+
+function heroClasses(raw: string): string {
+  const tokens = new Set(raw.trim().split(/\s+/))
+  const classes: string[] = []
+  const color = heroColor(tokens)
+  if (color) classes.push(color)
+  for (const token of tokens) {
+    if (HERO_STRUCT[token]) classes.push(HERO_STRUCT[token])
+  }
+  return classes.join(' ')
+}
+
+// Render a hero phrase, acting out the words. Emphasis is [text](treatments);
+// see lib/heroPhrases.ts for the treatment vocabulary.
+function renderPhrase(text: string): ReactNode[] {
+  const parts: ReactNode[] = []
+  const re = /\[([^\]]+)\]\(([^)]+)\)/g
+  let last = 0
+  let key = 0
+  let match: RegExpExecArray | null
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) {
+      parts.push(<span key={key++}>{text.slice(last, match.index)}</span>)
     }
-    return <span key={i}>{part}</span>
-  })
+    parts.push(
+      <span key={key++} className={heroClasses(match[2])}>
+        {match[1]}
+      </span>,
+    )
+    last = re.lastIndex
+  }
+  if (last < text.length) parts.push(<span key={key++}>{text.slice(last)}</span>)
+  return parts
 }
 
 export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps) {
@@ -73,13 +94,31 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
     setPhrase(HERO_PHRASES[Math.floor(Math.random() * HERO_PHRASES.length)])
   }, [])
 
-  const { supported: voiceSupported, listening, interim, toggle, stop } = useDictation(
-    (finalText) =>
-      setText((prev) => (prev.trim() ? `${prev.replace(/\s+$/, '')} ${finalText}` : finalText)),
+  const {
+    supported: voiceSupported,
+    listening,
+    interim,
+    error: dictationError,
+    toggle,
+    stop,
+  } = useDictation((finalText) =>
+    setText((prev) => (prev.trim() ? `${prev.replace(/\s+$/, '')} ${finalText}` : finalText)),
   )
 
   // What you say appears IN the box: the committed text plus the live phrase.
   const display = listening && interim ? `${text}${text ? ' ' : ''}${interim}` : text
+
+  // Grow the box with its content and keep the newest line in view, so dictated
+  // or typed text that wraps slides up on its own instead of making the user
+  // scroll the field by hand.
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, INPUT_MAX_HEIGHT)}px`
+    el.scrollTop = el.scrollHeight
+  }, [display])
 
   return (
     <section
@@ -137,15 +176,25 @@ export function BrainDump({ onSubmit, loading, error, onResume }: BrainDumpProps
           </div>
         )}
 
-        <div className="dump-glow rounded-[1.3rem] bg-surface border border-line transition focus-within:border-accent/60">
+        {dictationError && (
+          <p role="alert" className="text-center text-sm text-accent-deep">
+            {dictationError}
+          </p>
+        )}
+
+        {/* Flex-centered wrapper so a single line of text (or the placeholder)
+            sits vertically centered in the box rather than riding high, which is
+            what a bare rows=1 textarea does. The textarea sizes to its content. */}
+        <div className="dump-glow flex min-h-[3.5rem] items-center rounded-[1.3rem] bg-surface border border-line px-5 transition focus-within:border-accent/60">
           <textarea
+            ref={inputRef}
             value={display}
             onChange={(e) => setText(e.target.value)}
             rows={1}
             maxLength={MAX}
             placeholder="What's on your mind?"
             aria-label="Brain dump"
-            className="w-full resize-none rounded-[1.3rem] bg-transparent px-5 py-3.5 text-ink text-base leading-relaxed placeholder:text-faint/60 outline-none"
+            className="block w-full resize-none overflow-y-auto bg-transparent py-2 text-ink text-base leading-normal placeholder:text-faint/60 outline-none"
           />
         </div>
 

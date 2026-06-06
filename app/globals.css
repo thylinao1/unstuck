@@ -15,6 +15,11 @@
   --color-accent-deep: oklch(0.5 0.15 36);
   --color-accent-soft: oklch(0.93 0.045 52);
 
+  /* Two semantic cool/hot accents used only in the hero phrases: blue reads as
+     "freeze / cold / clear", red as "urgent". Deliberate, not decorative. */
+  --color-hero-blue: oklch(0.55 0.13 250);
+  --color-hero-red: oklch(0.55 0.19 25);
+
   --font-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
 
@@ -155,59 +160,27 @@ body::before {
   animation: celebrate 700ms var(--ease-soft) both;
 }
 
-/* A small spark burst when a step is completed. Each direction is its own
-   keyframe (no var() in the transform) so it animates in Safari too. */
-.burst {
-  position: absolute;
-  left: 50%;
-  top: 46%;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-  z-index: 20;
-}
-.spark {
-  position: absolute;
-  left: -3px;
-  top: -3px;
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  background: var(--color-accent);
-  opacity: 0;
-}
-.spark-0 { animation: sp0 620ms var(--ease-soft) forwards; }
-.spark-1 { animation: sp1 620ms var(--ease-soft) forwards; }
-.spark-2 { animation: sp2 620ms var(--ease-soft) forwards; }
-.spark-3 { animation: sp3 620ms var(--ease-soft) forwards; }
-.spark-4 { animation: sp4 620ms var(--ease-soft) forwards; }
-.spark-5 { animation: sp5 620ms var(--ease-soft) forwards; }
-.spark-6 { animation: sp6 620ms var(--ease-soft) forwards; }
-.spark-7 { animation: sp7 620ms var(--ease-soft) forwards; }
-@keyframes sp0 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(0, -52px) scale(0.2); opacity: 0; } }
-@keyframes sp1 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(44px, -26px) scale(0.2); opacity: 0; } }
-@keyframes sp2 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(52px, 12px) scale(0.2); opacity: 0; } }
-@keyframes sp3 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(31px, 44px) scale(0.2); opacity: 0; } }
-@keyframes sp4 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(-31px, 44px) scale(0.2); opacity: 0; } }
-@keyframes sp5 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(-52px, 12px) scale(0.2); opacity: 0; } }
-@keyframes sp6 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(-44px, -26px) scale(0.2); opacity: 0; } }
-@keyframes sp7 { from { transform: translate(0, 0) scale(1); opacity: 0.9; } to { transform: translate(10px, -50px) scale(0.2); opacity: 0; } }
+/* The completed-step and head-cleared celebrations are drawn with canvas-confetti
+   (see lib/celebrate.ts), on a <canvas> via requestAnimationFrame. That is
+   deliberate: the old CSS spark keyframes were switched off by the reduced-motion
+   block below, so the celebration vanished whenever macOS Reduce Motion was on.
+   A canvas cannot be silenced by a CSS rule, so it fires on real Safari too. */
 
-/* A brief praise line that floats up in the middle on each completed step. */
+/* A brief praise line on each completed step. It is placed at a random spot
+   AROUND the card (see PRAISE_POSITIONS), not over the action text, then floats
+   up and fades. Translate-only so the inline top/left/right anchor is preserved. */
 @keyframes praise {
-  0% { opacity: 0; transform: translate(-50%, 10px); }
-  18% { opacity: 1; transform: translate(-50%, 0); }
-  76% { opacity: 1; transform: translate(-50%, -2px); }
-  100% { opacity: 0; transform: translate(-50%, -16px); }
+  0% { opacity: 0; transform: translateY(10px); }
+  20% { opacity: 1; transform: translateY(0); }
+  72% { opacity: 1; transform: translateY(-3px); }
+  100% { opacity: 0; transform: translateY(-16px); }
 }
 .micro-praise {
   position: absolute;
-  left: 50%;
-  top: 36%;
   z-index: 25;
   pointer-events: none;
   white-space: nowrap;
-  animation: praise 1400ms var(--ease-soft) forwards;
+  animation: praise 1200ms var(--ease-soft) forwards;
 }
 
 /* The standout word in a celebration line: bigger, with a warm gradient that
@@ -234,6 +207,22 @@ body::before {
   -webkit-text-fill-color: transparent;
   color: transparent;
   animation: done-shine 3.2s linear infinite;
+}
+
+/* A quick, calm fade for a value that just updated (the card's calibration line),
+   so changing the time or energy picker visibly registers. */
+@keyframes value-pop {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.value-pop {
+  animation: value-pop 260ms var(--ease-soft) both;
 }
 
 /* Mic icon while dictating: a soft pulse so "listening" reads at a glance. */
@@ -277,14 +266,77 @@ body::before {
   animation: breathe 4.2s var(--ease-soft) infinite;
 }
 
+/* Hero phrase: "lazy" oozes downward like a slow liquid. A blue gradient text
+   fill plus a gentle downward stretch from the top, so the word feels heavy. */
+.hero-drip {
+  display: inline-block;
+  transform-origin: top center;
+  background-image: linear-gradient(
+    180deg,
+    var(--color-hero-blue) 0%,
+    oklch(0.62 0.12 248) 55%,
+    oklch(0.74 0.1 246) 100%
+  );
+  background-size: 100% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: hero-drip 3s var(--ease-soft) infinite;
+}
+@keyframes hero-drip {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+  50% {
+    transform: translateY(0.05em) scaleY(1.09);
+  }
+}
+
+/* Hero phrase: one ornamental word ("one") in a flowing script. The script face
+   has a small x-height, so size up and tighten the line box to sit on the line. */
+.hero-script {
+  font-family: var(--font-script), "Snell Roundhand", cursive;
+  font-size: 1.55em;
+  line-height: 0.7;
+  font-weight: 400;
+  padding: 0 0.06em;
+  vertical-align: -0.06em;
+}
+
+/* Hero phrase: "clear" rendered as cool crystalline glass in a clean sans face,
+   a deliberate contrast against the warm serif around it. */
+.hero-glass {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  background-image: linear-gradient(
+    135deg,
+    oklch(0.66 0.07 245) 0%,
+    oklch(0.82 0.04 228) 45%,
+    oklch(0.58 0.09 255) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* Calm the ambient and entrance motion. The completion celebration is NOT
+     listed here on purpose: it is canvas-confetti, not CSS, and it is meant to
+     fire even with Reduce Motion on (that was the exact setting where it used to
+     disappear). lib/celebrate.ts gives reduced motion a gentler, shorter burst. */
   .unstuck-card,
   .rise,
   .breath-orb,
   .mic-pulse,
   .celebrate,
   .done-em,
-  [class*='spark-'] {
+  .value-pop,
+  .hero-drip {
     animation: none;
   }
   *,

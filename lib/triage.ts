@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import type { Energy, TriageItem } from './types'
-import { capitalizeFirst } from './text'
+import { capitalizeFirst, normalizeDashes } from './text'
 
 // Claude-powered triage. Returns null on ANY problem (no key, API error,
 // malformed output) so the caller falls back to the deterministic engine and
@@ -34,6 +34,8 @@ const claudeOutputSchema = z.object({
         biggerAction: z.string().min(1).max(300).optional(),
         biggerMinutes: z.number().int().min(0).max(180).optional(),
         biggerWhy: z.string().min(1).max(240).optional(),
+        eventStart: z.string().min(10).max(40).optional(),
+        eventEnd: z.string().min(10).max(40).optional(),
       }),
     )
     .max(MAX_ITEMS),
@@ -53,6 +55,7 @@ A user gives you a messy "brain dump" of everything on their mind. Your job:
 - Set "priority" 0-100: higher for anything time-sensitive, blocking, or anxiety-driving.
 - Write "why": one short line (under 14 words) on why THIS step helps. Use a real reason from psychology or plain common sense. Never restate the action. Never be preachy.
 - Also write "biggerAction": a more substantial single step for when the user has energy and time, about 10 to 15 minutes. It is still ONE concrete step, more momentum than the tiny first step, never the whole task. Add "biggerMinutes" (10 to 15) and "biggerWhy" (one short line) for it.
+- SCHEDULED EVENTS: ONLY if an item is an appointment, meeting, call, or event at a SPECIFIC CLOCK TIME (for example "dentist at 3pm", "call mum Friday at 6", "meeting tomorrow 10am"), set "eventStart" to the resolved LOCAL start as ISO 8601 with NO timezone, like "2026-06-09T15:00". Resolve "today", "tomorrow", and weekday names against the user's current local time given in the user message. Add "eventEnd" only if a clear end time is stated. Do NOT set eventStart for a deadline or due date that has no specific time of day: a task "due Friday" or "sometime this week" is NOT an event. When in doubt, omit it.
 
 Safety:
 - If the dump shows any sign of self-harm, suicidal thoughts, abuse, or a medical emergency, set "needsSupport" to true. Still triage the ordinary, non-crisis items normally. Do not turn the crisis itself into a task.
@@ -60,8 +63,8 @@ Safety:
 Rules:
 - nextAction must be a tiny first step ("Open the doc and write one ugly sentence"), never the whole task ("Write the essay").
 - Keep titles short and echo the user's own words.
-- Write every field — titles, next actions, and why lines — in the same language the user wrote their brain dump in.
-- Calm, plain language. No emoji. Return at most ${MAX_ITEMS} items.`
+- Write every field (titles, next actions, and why lines) in the same language the user wrote their brain dump in.
+- Calm, plain language. No emoji. Never use en dashes or em dashes anywhere; write a number range as "10 to 15", not "10-15" or "10 to 15" with a dash. Return at most ${MAX_ITEMS} items.`
 
 const SKEPTIC_PROMPT = `You are a sharp, kind skeptic reviewing an anti-overwhelm app's draft output before a real, overwhelmed user sees it. You get the original brain dump and a list of drafted steps (title, nextAction, minutes, energy, priority, why).
 
@@ -73,8 +76,9 @@ Challenge every item and return a corrected full list:
 - THE WHY: if a "why" is false, circular, obvious, forced, preachy, or reads funny (over-psychologising a simple task), rewrite it as the plainest true reason in under 14 words. Plain common sense beats a stretched psychology claim.
 - THE BIGGER STEP: each item also has a "biggerAction" (a more substantial single step, ~10 to 15 min) with "biggerMinutes" and "biggerWhy". Apply the same checks to it: no busywork, still one concrete step and not the whole task, true why. Keep BOTH the small step and the bigger step.
 - Keep titles unchanged. Keep anything that is already good. Keep the same language as the user.
+- EVENT TIMES: if an item has "eventStart" (and maybe "eventEnd"), keep them exactly as given. Do not invent times for items that have none.
 
-Return the full corrected list via record_triage, same shape, with every field including "why" and the bigger-step fields.`
+Return the full corrected list via record_triage, same shape, with every field including "why", the bigger-step fields, and any eventStart/eventEnd.`
 
 const TOOL: Anthropic.Tool = {
   name: 'record_triage',
@@ -99,6 +103,8 @@ const TOOL: Anthropic.Tool = {
             biggerAction: { type: 'string', description: 'A more substantial single step (~10-15 min) for when the user has energy and time' },
             biggerMinutes: { type: 'integer', description: 'Estimated minutes for biggerAction (10-15)' },
             biggerWhy: { type: 'string', description: 'One short line on why the bigger step helps' },
+            eventStart: { type: 'string', description: 'Local ISO start (e.g. "2026-06-09T15:00") if the item has a specific date and time; omit otherwise' },
+            eventEnd: { type: 'string', description: 'Local ISO end, only if clearly stated' },
           },
           required: ['title', 'nextAction', 'minutes', 'energy', 'priority', 'why'],
         },
@@ -122,6 +128,23 @@ function getClient(): Anthropic | null {
 
 function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 8)
+}
+
+// Keep an event time only if it is a parseable local ISO datetime like
+// "2026-06-09T15:00" (no zone). Anything else returns undefined, so a malformed
+// model value never reaches the "Add to calendar" button.
+function validLocalIso(value: string | undefined): string | undefined {
+  if (!value) return undefined
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value)) return undefined
+  return Number.isNaN(Date.parse(value)) ? undefined : value
+}
+
+// The weekday of "now", so the model can count "this Friday" or "tomorrow"
+// correctly. LLMs are weak at date arithmetic; the anchor day fixes most of it.
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+function weekdayHint(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : ` (a ${WEEKDAYS[d.getDay()]})`
 }
 
 function logFallback(reason: string, extra?: Record<string, unknown>): void {
@@ -181,6 +204,7 @@ export async function triageWithClaude(
   brainDump: string,
   minutes: number,
   energy: Energy,
+  now?: string,
 ): Promise<TriageResult | null> {
   const client = getClient()
   if (!client) {
@@ -189,10 +213,11 @@ export async function triageWithClaude(
   }
 
   try {
+    const nowLine = now ? `My current local date and time is ${now}${weekdayHint(now)}.\n` : ''
     const draft = await runToolCall(
       client,
       SYSTEM_PROMPT,
-      `I have about ${minutes} minutes and ${energy} energy right now.\n\nBrain dump:\n${brainDump}`,
+      `${nowLine}I have about ${minutes} minutes and ${energy} energy right now.\n\nBrain dump:\n${brainDump}`,
       'draft',
     )
     if (!draft) return null
@@ -217,6 +242,8 @@ export async function triageWithClaude(
           biggerAction: it.biggerAction,
           biggerMinutes: it.biggerMinutes,
           biggerWhy: it.biggerWhy,
+          eventStart: it.eventStart,
+          eventEnd: it.eventEnd,
         })),
       )}`
       const refined = await runToolCall(client, SKEPTIC_PROMPT, skepticInput, 'skeptic')
@@ -224,21 +251,25 @@ export async function triageWithClaude(
     }
 
     const items: TriageItem[] = finalItems.map((item, i) => ({
-      title: item.title,
-      nextAction: capitalizeFirst(item.nextAction),
+      title: normalizeDashes(item.title),
+      nextAction: capitalizeFirst(normalizeDashes(item.nextAction)),
       // Clamp into [1, cap] instead of rejecting a 0 or an over-large estimate.
       minutes: Math.max(1, Math.min(item.minutes, MAX_STEP_MINUTES)),
       energy: item.energy,
       priority: item.priority,
-      why: item.why,
-      biggerAction: item.biggerAction ? capitalizeFirst(item.biggerAction) : undefined,
+      why: item.why ? normalizeDashes(item.why) : item.why,
+      biggerAction: item.biggerAction ? capitalizeFirst(normalizeDashes(item.biggerAction)) : undefined,
       // The bigger step sits between 6 and the cap, so it is clearly more than
       // the tiny first step but still fits the time pickers.
       biggerMinutes:
         item.biggerMinutes != null
           ? Math.max(6, Math.min(item.biggerMinutes, MAX_STEP_MINUTES))
           : undefined,
-      biggerWhy: item.biggerWhy,
+      biggerWhy: item.biggerWhy ? normalizeDashes(item.biggerWhy) : item.biggerWhy,
+      // Only keep an event time the browser can actually parse, so a malformed
+      // model value never reaches the "Add to calendar" button.
+      eventStart: validLocalIso(item.eventStart),
+      eventEnd: validLocalIso(item.eventEnd),
       id: `c${i}-${slug(item.title)}`,
     }))
 

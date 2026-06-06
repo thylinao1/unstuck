@@ -1,15 +1,16 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import type { Energy, TriageItem, TriageResponse } from '@/lib/types'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import type { TriageItem, TriageResponse } from '@/lib/types'
 import { BrainDump } from '@/components/BrainDump'
 import { Breath } from '@/components/Breath'
-import { Burst } from '@/components/Burst'
-import { EnergyPicker } from '@/components/EnergyPicker'
+import { EffortSlider } from '@/components/EffortSlider'
 import { FocusCard } from '@/components/FocusCard'
 import { MomentumMeter } from '@/components/MomentumMeter'
+import { OrganizedList } from '@/components/OrganizedList'
 import { RemindMe } from '@/components/RemindMe'
 import { SupportCard } from '@/components/SupportCard'
+import { LearnPanel } from '@/components/LearnPanel'
 import {
   clearNudge,
   fireNotification,
@@ -24,6 +25,25 @@ import { clearSession, loadSession, saveSession, type StoredSession } from '@/li
 import { addCleared, loadStats } from '@/lib/stats'
 import { DONE_PHRASES } from '@/lib/donePhrases'
 import { randomPraise } from '@/lib/microPraise'
+import { celebrateDone, celebrateStep } from '@/lib/celebrate'
+import { clearCheckIn, loadDueCheckIn, recordCheckIn } from '@/lib/checkin'
+
+// How long to hold the praise and confetti on a completed step before the next
+// card slides in, so the two never collide. Longer than the praise fade.
+const ADVANCE_BEAT_MS = 1500
+
+// The praise line lands at one of the card's corners, never over the action text.
+const PRAISE_POSITIONS: ReadonlyArray<CSSProperties> = [
+  { top: '3%', left: '3%' },
+  { top: '3%', right: '3%' },
+  { bottom: '4%', left: '5%' },
+  { bottom: '4%', right: '5%' },
+]
+
+// The effort slider starts low, so the first thing you see is the gentle step.
+const DEFAULT_EFFORT = 0.18
+
+type Mode = 'unstuck' | 'organized'
 
 // Render a celebration line, giving the *marked* word the big animated treatment.
 function renderDone(text: string) {
@@ -37,19 +57,18 @@ function renderDone(text: string) {
   })
 }
 
-const ENERGY_RANK: Record<Energy, number> = { low: 0, med: 1, high: 2 }
-// Energy is a protective ceiling: never surface something you're too drained
-// for. Within what fits, urgency leads; matching the energy you picked only
-// breaks ties, so a deadline is never buried under a lighter task.
-function energyMatch(item: TriageItem, energy: Energy): number {
-  return item.energy === energy ? 1 : 0
+// The user's local "now" as ISO with no zone, so the AI can resolve "3pm" and
+// "Friday" into a real calendar time for the add-to-calendar feature.
+function localNowIso(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
 export default function Home() {
   const [items, setItems] = useState<TriageItem[]>([])
   const [doneIds, setDoneIds] = useState<string[]>([])
-  const [minutes, setMinutes] = useState(15)
-  const [energy, setEnergy] = useState<Energy>('med')
+  const [effort, setEffort] = useState(DEFAULT_EFFORT)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [support, setSupport] = useState(false)
@@ -59,38 +78,37 @@ export default function Home() {
   const [donePhrase, setDonePhrase] = useState(DONE_PHRASES[0])
   const [nudgeBanner, setNudgeBanner] = useState<string | null>(null)
   const [nudgeTick, setNudgeTick] = useState(0)
-  const [burst, setBurst] = useState(0)
-  const [doneToast, setDoneToast] = useState<{ text: string; n: number } | null>(null)
-  const [showList, setShowList] = useState(false)
+  const [doneToast, setDoneToast] = useState<{ text: string; n: number; pos: CSSProperties } | null>(
+    null,
+  )
+  const [advancing, setAdvancing] = useState(false)
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [mode, setMode] = useState<Mode>('unstuck')
+  const [showLearn, setShowLearn] = useState(false)
+  const [checkInTask, setCheckInTask] = useState<string | null>(null)
 
-  // Whether the last view change was an "advance" (new card to act on) or a
-  // "pick" (time/energy toggle) — drives whether focus moves to the new card,
-  // so a chip toggle doesn't yank focus out of the picker.
+  // Whether the last view change was an "advance" (new card) or a "pick" (effort
+  // change), so a slider nudge doesn't yank focus out of the slider.
   const [lastAction, setLastAction] = useState<'advance' | 'pick'>('advance')
 
-  // Detect a previous session on mount, but DON'T auto-jump into it — the hero
-  // (which carries the whole pitch) always shows first; resume is opt-in.
+  // One-time hydration from localStorage (unavailable during SSR).
   useEffect(() => {
     const session = loadSession()
-    /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration from localStorage, which is unavailable during SSR */
+    /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration from localStorage */
     if (session && session.items.length > 0) setSavedSession(session)
     setLifetimeCleared(loadStats().cleared)
+    setCheckInTask(loadDueCheckIn())
     setHydrated(true)
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
 
-  // Persist after every meaningful change (once hydrated, and only with real
-  // data). Never persist a crisis session: there should be nothing to silently
-  // resume into that would skip the support card on a later visit.
+  // Persist after every meaningful change. Never persist a crisis session.
   useEffect(() => {
     if (!hydrated || items.length === 0 || support) return
-    saveSession({ items, doneIds, minutes, energy })
-  }, [hydrated, items, doneIds, minutes, energy, support])
+    saveSession({ items, doneIds, effort })
+  }, [hydrated, items, doneIds, effort, support])
 
-  // Gentle nudge: surface a due reminder on load; if one is scheduled for the
-  // future, fire it at its time while the tab stays open. The reminder is only
-  // cleared when the user dismisses it (so a missed one is not lost), which also
-  // keeps this effect idempotent and safe under dev double-invoke.
+  // Gentle nudge: surface a due reminder on load; fire a scheduled one while open.
   useEffect(() => {
     if (!hydrated) return
     const nudge = loadNudge()
@@ -108,55 +126,39 @@ export default function Home() {
     return () => clearTimeout(id)
   }, [hydrated, nudgeTick])
 
-  // Clear the floating praise line shortly after it appears.
+  // Don't leave a pending advance timer running if the component unmounts.
   useEffect(() => {
-    if (!doneToast) return
-    const id = setTimeout(() => setDoneToast(null), 1400)
-    return () => clearTimeout(id)
-  }, [doneToast])
+    return () => {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current)
+    }
+  }, [])
 
   const doneSet = useMemo(() => new Set(doneIds), [doneIds])
-  const remaining = useMemo(
-    () => items.filter((it) => !doneSet.has(it.id)),
-    [items, doneSet],
-  )
+  const remaining = useMemo(() => items.filter((it) => !doneSet.has(it.id)), [items, doneSet])
 
-  // Surface the most fitting next step for the time + energy you have right now.
-  // Energy is a hard ceiling (never something you're too drained for); within
-  // what fits, rank by urgency plus an energy-match nudge. If nothing fits, still
-  // offer the top remaining item so the screen is never blank.
+  // Surface the most important remaining item (one card at a time). The effort
+  // slider sizes its step; it no longer changes which item shows.
   const current = useMemo(() => {
     if (remaining.length === 0) return null
-    const affordable = remaining.filter(
-      (it) => it.minutes <= minutes && ENERGY_RANK[it.energy] <= ENERGY_RANK[energy],
-    )
-    const pool = affordable.length > 0 ? affordable : remaining
-    return [...pool].sort(
-      (a, b) => b.priority - a.priority || energyMatch(b, energy) - energyMatch(a, energy),
-    )[0]
-  }, [remaining, minutes, energy])
+    return [...remaining].sort((a, b) => b.priority - a.priority)[0]
+  }, [remaining])
 
-  const currentFits = current
-    ? current.minutes <= minutes && ENERGY_RANK[current.energy] <= ENERGY_RANK[energy]
-    : true
-
-  // When you have real energy and time, swap in the bigger step the AI already
-  // pre-generated. Instant, client-side, no extra API call. High energy needs
-  // 15+ min; medium needs the full 30, so the picker visibly does something.
-  const showBigger = current
-    ? Boolean(current.biggerAction) &&
-      ((energy === 'high' && minutes >= 15) || (energy === 'med' && minutes >= 30))
-    : false
+  // The current item offers 1 or 2 step sizes (tiny, plus a bigger one when the
+  // AI generated one). The slider splits into that many bins; its position picks
+  // the size, so every meaningful slide visibly changes the step.
+  const bins = current ? 1 + (current.biggerAction ? 1 : 0) : 1
+  const sizeIndex = Math.min(bins - 1, Math.floor(effort * bins))
+  const showBigger = sizeIndex >= 1
 
   async function handleSubmit(text: string) {
-    if (loading) return // guard against a fast double-submit
+    if (loading) return
     setLoading(true)
     setError(null)
     try {
       const res = await fetch('/api/triage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brainDump: text, minutes, energy }),
+        body: JSON.stringify({ brainDump: text, now: localNowIso() }),
       })
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null
@@ -173,6 +175,8 @@ export default function Home() {
       setItems(data.items)
       setDoneIds([])
       setSavedSession(null)
+      // Remember the first thing you set out to do, for a gentle check-in later.
+      if (!isCrisis && data.items[0]) recordCheckIn(data.items[0].title)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Try again.')
     } finally {
@@ -185,64 +189,101 @@ export default function Home() {
     setLastAction('advance')
     setItems(savedSession.items)
     setDoneIds(savedSession.doneIds ?? [])
-    setMinutes(savedSession.minutes ?? 15)
-    setEnergy(savedSession.energy ?? 'med')
+    setEffort(savedSession.effort ?? DEFAULT_EFFORT)
     setSavedSession(null)
   }
 
   function completeCurrent() {
-    if (!current) return
-    setLastAction('advance')
-    setBurst((b) => b + 1) // a little spark burst on each completed step
+    if (!current || advancing) return
+    const completedId = current.id
+
     if (remaining.length === 1) {
-      // Last one: go to the big celebration screen.
+      setLastAction('advance')
       setDonePhrase(DONE_PHRASES[Math.floor(Math.random() * DONE_PHRASES.length)])
-    } else {
-      // Mid-flow: a brief praise line floats up in the middle.
-      setDoneToast((prev) => ({ text: randomPraise(), n: (prev?.n ?? 0) + 1 }))
+      setDoneIds((prev) => [...prev, completedId])
+      setLifetimeCleared(addCleared(1))
+      void celebrateDone()
+      return
     }
-    setDoneIds((prev) => [...prev, current.id])
-    setLifetimeCleared(addCleared(1)) // calm gamification: a count that only grows
+
+    // Mid-flow: hold the card, play praise + a confetti pop, then advance.
+    setLastAction('advance')
+    setAdvancing(true)
+    setDoneToast((prev) => ({
+      text: randomPraise(),
+      n: (prev?.n ?? 0) + 1,
+      pos: PRAISE_POSITIONS[Math.floor(Math.random() * PRAISE_POSITIONS.length)],
+    }))
+    void celebrateStep()
+    if (advanceTimer.current) clearTimeout(advanceTimer.current)
+    advanceTimer.current = setTimeout(() => {
+      setDoneIds((prev) => [...prev, completedId])
+      setLifetimeCleared(addCleared(1))
+      setDoneToast(null)
+      setAdvancing(false)
+      advanceTimer.current = null
+    }, ADVANCE_BEAT_MS)
   }
 
   function skipCurrent() {
-    if (!current) return
+    if (!current || advancing) return
     setLastAction('advance')
-    // Push this card to the back by dropping its priority below the rest.
     setItems((prev) => {
       const lowest = Math.min(...prev.map((p) => p.priority))
-      return prev.map((p) =>
-        p.id === current.id ? { ...p, priority: lowest - 1 } : p,
-      )
+      return prev.map((p) => (p.id === current.id ? { ...p, priority: lowest - 1 } : p))
     })
   }
 
-  function setMinutesPicked(m: number) {
+  // Organized mode: tick an item off (or back on) directly in the list.
+  function toggleOrganized(id: string) {
+    if (doneSet.has(id)) {
+      setDoneIds((prev) => prev.filter((x) => x !== id))
+      return
+    }
+    const next = [...doneIds, id]
     setLastAction('pick')
-    setMinutes(m)
+    setDoneIds(next)
+    setLifetimeCleared(addCleared(1))
+    if (next.length >= items.length) {
+      setDonePhrase(DONE_PHRASES[Math.floor(Math.random() * DONE_PHRASES.length)])
+      void celebrateDone()
+    } else {
+      void celebrateStep()
+    }
   }
 
-  function setEnergyPicked(e: Energy) {
+  function setEffortPicked(value: number) {
     setLastAction('pick')
-    setEnergy(e)
+    setEffort(value)
   }
 
   function reset() {
+    if (advanceTimer.current) {
+      clearTimeout(advanceTimer.current)
+      advanceTimer.current = null
+    }
+    setAdvancing(false)
+    setDoneToast(null)
     clearSession()
     setItems([])
     setDoneIds([])
     setSupport(false)
     setError(null)
     setSavedSession(null)
-    setShowList(false)
+    setMode('unstuck')
   }
 
   function dismissSupport() {
     setSupport(false)
   }
 
+  function dismissCheckIn() {
+    setCheckInTask(null)
+    clearCheckIn()
+  }
+
   async function handleRemind(option: NudgeOption) {
-    await requestNudgePermission() // opt-in; the on-reopen line works regardless
+    await requestNudgePermission()
     scheduleNudge({ at: nudgeTime(option), message: randomNudgeMessage() })
     setNudgeTick((t) => t + 1)
   }
@@ -264,24 +305,43 @@ export default function Home() {
           <span className="unstuck-mark" aria-hidden />
           Unstuck
         </span>
-        {items.length > 0 && !loading && (
-          <div className="flex items-center gap-4">
-            {view === 'focus' && (
-              <button
-                onClick={() => setShowList(true)}
-                className="text-sm text-faint transition hover:text-ink"
-              >
-                See all
-              </button>
-            )}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setShowLearn(true)}
+            aria-label="Why starting small works"
+            className="text-faint transition hover:text-ink"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M9 18h6" />
+              <path d="M10 21.5h4" />
+              <path d="M12 2.5a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.3 1.3 2.2h4.6c.2-.9.7-1.7 1.3-2.2A6 6 0 0 0 12 2.5Z" />
+            </svg>
+          </button>
+          {items.length > 0 && !loading && (
             <button onClick={reset} className="text-sm text-faint transition hover:text-ink">
               Start over
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </header>
 
-      {nudgeBanner && (
+      {checkInTask ? (
+        <div
+          role="status"
+          className="rise mx-auto mt-3 flex w-full max-w-xl items-center justify-between gap-3 rounded-2xl border border-accent/20 bg-accent-soft/50 px-5 py-3 text-sm text-accent-deep"
+        >
+          <span>
+            No rush. Last time you started &ldquo;{checkInTask}&rdquo;. How did it go?
+          </span>
+          <button
+            type="button"
+            onClick={dismissCheckIn}
+            className="shrink-0 text-accent-deep/70 transition hover:text-accent-deep"
+          >
+            Okay
+          </button>
+        </div>
+      ) : nudgeBanner ? (
         <div
           role="status"
           className="rise mx-auto mt-3 flex w-full max-w-xl items-center justify-between gap-3 rounded-2xl border border-accent/20 bg-accent-soft/60 px-5 py-3 text-sm text-accent-deep"
@@ -299,10 +359,8 @@ export default function Home() {
             Dismiss
           </button>
         </div>
-      )}
+      ) : null}
 
-      {/* Screen-reader announcer: reads the surfaced action whenever it changes,
-          including on a time/energy chip toggle that swaps the card. */}
       <p className="sr-only" aria-live="polite">
         {view === 'focus' && current
           ? `Next: ${showBigger ? current.biggerAction : current.nextAction}`
@@ -326,31 +384,57 @@ export default function Home() {
         )}
 
         {!loading && view === 'focus' && current && (
-          <section className="rise relative w-full max-w-xl flex flex-col gap-8">
-            <Burst trigger={burst} />
-            {doneToast && (
-              <span key={doneToast.n} className="micro-praise font-display text-xl text-accent-deep">
-                {doneToast.text}
-              </span>
+          <section className="rise relative w-full max-w-xl flex flex-col items-center gap-7">
+            <div role="tablist" aria-label="View mode" className="inline-flex items-center gap-1 rounded-full border border-line bg-surface/70 p-1 text-sm">
+              <button
+                role="tab"
+                aria-selected={mode === 'unstuck'}
+                onClick={() => setMode('unstuck')}
+                className={`rounded-full px-4 py-1.5 transition ${mode === 'unstuck' ? 'bg-ink text-canvas font-medium' : 'text-muted hover:text-ink'}`}
+              >
+                Unstuck
+              </button>
+              <button
+                role="tab"
+                aria-selected={mode === 'organized'}
+                onClick={() => setMode('organized')}
+                className={`rounded-full px-4 py-1.5 transition ${mode === 'organized' ? 'bg-ink text-canvas font-medium' : 'text-muted hover:text-ink'}`}
+              >
+                Organized
+              </button>
+            </div>
+
+            {mode === 'unstuck' ? (
+              <>
+                {doneToast && (
+                  <span
+                    key={doneToast.n}
+                    style={doneToast.pos}
+                    className="micro-praise font-display text-xl text-accent-deep"
+                  >
+                    {doneToast.text}
+                  </span>
+                )}
+                <EffortSlider value={effort} bins={bins} onChange={setEffortPicked} />
+                <FocusCard
+                  key={current.id}
+                  item={current}
+                  isBigger={showBigger}
+                  hasBigger={bins >= 2}
+                  focusOnMount={lastAction === 'advance'}
+                  frozen={advancing}
+                  onDone={completeCurrent}
+                  onSkip={skipCurrent}
+                />
+                <MomentumMeter done={doneIds.length} total={items.length} />
+                <RemindMe onRemind={handleRemind} />
+              </>
+            ) : (
+              <>
+                <OrganizedList items={items} doneIds={doneIds} onToggle={toggleOrganized} />
+                <MomentumMeter done={doneIds.length} total={items.length} />
+              </>
             )}
-            <EnergyPicker
-              minutes={minutes}
-              energy={energy}
-              onMinutes={setMinutesPicked}
-              onEnergy={setEnergyPicked}
-            />
-            {/* key forces a fresh entrance animation per surfaced action */}
-            <FocusCard
-              key={current.id}
-              item={current}
-              fits={currentFits}
-              isBigger={showBigger}
-              focusOnMount={lastAction === 'advance'}
-              onDone={completeCurrent}
-              onSkip={skipCurrent}
-            />
-            <MomentumMeter done={doneIds.length} total={items.length} />
-            <RemindMe onRemind={handleRemind} />
           </section>
         )}
 
@@ -386,51 +470,7 @@ export default function Home() {
         )}
       </div>
 
-      {showList && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/20 px-4 py-6"
-          onClick={() => setShowList(false)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Your task list"
-            onClick={(e) => e.stopPropagation()}
-            className="rise w-full max-w-md max-h-[80dvh] overflow-y-auto rounded-[1.5rem] bg-surface border border-line shadow-[var(--shadow-card)] p-6 flex flex-col gap-5"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-xl text-ink">Your list</h2>
-              <span className="text-sm text-faint tabular-nums">
-                {doneIds.length} of {items.length} done
-              </span>
-            </div>
-            <ul className="flex flex-col gap-3">
-              {items.map((it) => {
-                const isDone = doneSet.has(it.id)
-                return (
-                  <li key={it.id} className="flex items-start gap-3">
-                    <span
-                      aria-hidden
-                      className={`mt-1 h-4 w-4 shrink-0 rounded-full border ${isDone ? 'bg-accent border-accent' : 'border-line'}`}
-                    />
-                    <span
-                      className={`text-base leading-snug ${isDone ? 'text-faint line-through' : 'text-ink'}`}
-                    >
-                      {it.title}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-            <button
-              onClick={() => setShowList(false)}
-              className="mx-auto rounded-full border border-line px-6 py-2.5 text-sm font-medium text-muted transition hover:text-ink hover:border-ink/25"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {showLearn && <LearnPanel onClose={() => setShowLearn(false)} />}
 
       <footer className="mx-auto w-full max-w-xl text-center text-xs text-faint/70">
         Unstuck · one small step at a time

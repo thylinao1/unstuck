@@ -19,7 +19,12 @@ const CSP = [
   "frame-ancestors 'none'",
   "object-src 'none'",
   "form-action 'self'",
-  "upgrade-insecure-requests",
+  // Upgrade http to https in PRODUCTION only. On a local http dev or preview
+  // server this directive makes Safari/WebKit and Firefox rewrite localhost
+  // requests to https and fail with an SSL error, which silently breaks
+  // hydration. Chromium exempts localhost, so it hides the problem. The live
+  // site is already all-https, so production keeps the hardening.
+  ...(isDev ? [] : ['upgrade-insecure-requests']),
 ].join('; ')
 
 const SECURITY_HEADERS = [
