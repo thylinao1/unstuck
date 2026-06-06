@@ -306,13 +306,17 @@ export default function Home() {
 
   return (
     <main className="relative z-10 min-h-dvh w-full text-ink px-5 py-7 sm:py-10 flex flex-col">
+      {OFFLINE_DEMO && (
+        <div className="-mx-5 -mt-7 sm:-mt-10 mb-6">
+          <OfflineNotice />
+        </div>
+      )}
       <header className="mx-auto w-full max-w-xl flex items-center justify-between">
         <span className="font-display text-lg text-ink inline-flex items-center gap-2">
           <span className="unstuck-mark" aria-hidden />
           Unstuck
         </span>
         <div className="flex items-center gap-4">
-          {OFFLINE_DEMO && <OfflineNotice />}
           <button
             onClick={() => setShowLearn(true)}
             aria-label="Why starting small works"
