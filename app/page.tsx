@@ -11,6 +11,7 @@ import { OrganizedList } from '@/components/OrganizedList'
 import { RemindMe } from '@/components/RemindMe'
 import { SupportCard } from '@/components/SupportCard'
 import { LearnPanel } from '@/components/LearnPanel'
+import { OfflineNotice } from '@/components/OfflineNotice'
 import { QuoteFooter } from '@/components/QuoteFooter'
 import {
   clearNudge,
@@ -43,6 +44,10 @@ const PRAISE_POSITIONS: ReadonlyArray<CSSProperties> = [
 
 // The effort slider starts low, so the first thing you see is the gentle step.
 const DEFAULT_EFFORT = 0.18
+
+// On the public demo the AI key is removed (zero cost), so we surface a small
+// "!" that explains the offline mode. Set NEXT_PUBLIC_OFFLINE_DEMO=1 in prod.
+const OFFLINE_DEMO = process.env.NEXT_PUBLIC_OFFLINE_DEMO === '1'
 
 type Mode = 'unstuck' | 'organized'
 
@@ -307,6 +312,7 @@ export default function Home() {
           Unstuck
         </span>
         <div className="flex items-center gap-4">
+          {OFFLINE_DEMO && <OfflineNotice />}
           <button
             onClick={() => setShowLearn(true)}
             aria-label="Why starting small works"

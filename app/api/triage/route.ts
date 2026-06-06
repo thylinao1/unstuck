@@ -62,7 +62,7 @@ export async function POST(request: Request): Promise<Response> {
   const started = Date.now()
 
   const ai = await triageWithClaude(brainDump, minutes, energy, now)
-  const items = ai?.items ?? triageFallback(brainDump)
+  const items = ai?.items ?? triageFallback(brainDump, now)
   const source: 'ai' | 'fallback' = ai ? 'ai' : 'fallback'
   // Defense in depth: the model catches nuance and context, the high-precision
   // regex is a backstop for the explicit phrases the model occasionally misses
