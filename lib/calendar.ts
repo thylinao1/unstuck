@@ -64,7 +64,7 @@ export function buildIcs(item: TriageItem): string | null {
     `DTSTAMP:${toIcsStampUtc(new Date())}`,
     `DTSTART:${toIcsLocal(start)}`,
     `DTEND:${toIcsLocal(end)}`,
-    `SUMMARY:${escapeText(item.title)}`,
+    `SUMMARY:${escapeText(item.eventTitle || item.title)}`,
     `DESCRIPTION:${escapeText(item.nextAction)}`,
     'END:VEVENT',
     'END:VCALENDAR',

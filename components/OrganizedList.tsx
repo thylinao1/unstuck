@@ -52,7 +52,10 @@ export function OrganizedList({ items, doneIds, onToggle }: OrganizedListProps) 
                 {hasEvent && (
                   <>
                     <span aria-hidden>·</span>
-                    <span>{formatEventTime(item.eventStart as string)}</span>
+                    <span>
+                      {item.eventTitle ? `${item.eventTitle}, ` : ''}
+                      {formatEventTime(item.eventStart as string)}
+                    </span>
                     <button
                       type="button"
                       onClick={() => addToCalendar(item)}

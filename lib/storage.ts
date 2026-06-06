@@ -31,6 +31,7 @@ const storedSessionSchema = z.object({
       biggerWhy: z.string().optional(),
       eventStart: z.string().optional(),
       eventEnd: z.string().optional(),
+      eventTitle: z.string().optional(),
     }),
   ),
   doneIds: z.array(z.string()),

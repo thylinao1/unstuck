@@ -11,6 +11,7 @@ import { OrganizedList } from '@/components/OrganizedList'
 import { RemindMe } from '@/components/RemindMe'
 import { SupportCard } from '@/components/SupportCard'
 import { LearnPanel } from '@/components/LearnPanel'
+import { QuoteFooter } from '@/components/QuoteFooter'
 import {
   clearNudge,
   fireNotification,
@@ -472,9 +473,7 @@ export default function Home() {
 
       {showLearn && <LearnPanel onClose={() => setShowLearn(false)} />}
 
-      <footer className="mx-auto w-full max-w-xl text-center text-xs text-faint/70">
-        Unstuck · one small step at a time
-      </footer>
+      <QuoteFooter />
     </main>
   )
 }

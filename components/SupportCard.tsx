@@ -1,11 +1,12 @@
 'use client'
 
-// Shown when the dump shows signs of crisis or self-harm. A calm tool for ages
-// 13+ must not turn that into a task with a momentum meter. Care comes first;
+// Shown when the dump shows signs that someone could be harmed: self-harm, a
+// threat to another person, abuse, or a medical emergency. A calm tool for ages
+// 13+ must not turn that into a task with a momentum meter. Safety comes first;
 // the list waits.
 
 interface SupportCardProps {
-  /** Present only when there are non-crisis items to return to. */
+  /** Present only when there are ordinary items to return to. */
   onContinue?: () => void
   onReset: () => void
 }
@@ -21,34 +22,41 @@ export function SupportCard({ onContinue, onReset }: SupportCardProps) {
         className="mx-auto h-1.5 w-16 rounded-full bg-gradient-to-r from-accent to-accent-deep"
       />
       <h2 id="support-heading" className="font-display text-3xl text-ink">
-        First, you.
+        First, this.
       </h2>
       <p className="text-muted text-lg leading-relaxed">
-        Some of what you wrote sounds heavy. Before any task, it is worth talking
-        to someone. You deserve that.
+        Some of what you wrote sounds serious. Before any task, please reach out.
+        You deserve support, and so does anyone who might be at risk.
       </p>
 
-      <div className="flex flex-col gap-2 rounded-[1.5rem] bg-surface border border-line shadow-[var(--shadow-card)] px-6 py-6 text-left">
-        <p className="text-ink font-medium">If you are in the US</p>
-        <p className="text-muted">
-          Call or text <span className="text-ink font-medium">988</span> (Suicide
-          and Crisis Lifeline), any time.
-        </p>
-        <p className="text-muted">
-          Or text <span className="text-ink font-medium">HOME</span> to{' '}
-          <span className="text-ink font-medium">741741</span> (Crisis Text Line).
-        </p>
-        <p className="text-faint text-sm pt-1">
-          Anywhere else:{' '}
-          <a
-            className="underline underline-offset-2 hover:text-ink"
-            href="https://findahelpline.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            findahelpline.com
-          </a>
-        </p>
+      <div className="flex flex-col gap-4 rounded-[1.5rem] bg-surface border border-line shadow-[var(--shadow-card)] px-6 py-6 text-left">
+        <div className="flex flex-col gap-1">
+          <p className="text-ink font-medium">If anyone is in immediate danger</p>
+          <p className="text-muted">
+            Contact your local emergency services now. In the US, call{' '}
+            <span className="text-ink font-medium">911</span>.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1 border-t border-line pt-4">
+          <p className="text-ink font-medium">If you are struggling</p>
+          <p className="text-muted">
+            Call or text <span className="text-ink font-medium">988</span> (Suicide
+            and Crisis Lifeline), any time. Or text{' '}
+            <span className="text-ink font-medium">HOME</span> to{' '}
+            <span className="text-ink font-medium">741741</span>.
+          </p>
+          <p className="text-faint text-sm pt-1">
+            Anywhere else:{' '}
+            <a
+              className="underline underline-offset-2 hover:text-ink"
+              href="https://findahelpline.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              findahelpline.com
+            </a>
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-col items-center gap-3">

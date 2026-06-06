@@ -13,14 +13,18 @@ import { dirname, join } from 'node:path'
 const __dir = dirname(fileURLToPath(import.meta.url))
 const src = readFileSync(join(__dir, '..', 'lib', 'safety.ts'), 'utf8')
 
-const literal = src.match(/\/\\b[\s\S]*?\/[a-z]+/)
-if (!literal) {
-  console.error('FAIL: could not find the CRISIS regex literal in lib/safety.ts')
+// Pull BOTH regex literals (CRISIS and VIOLENCE) out of the source and combine
+// them exactly as looksLikeCrisis does, so the test can't drift from the code.
+const literals = src.match(/\/\\b[\s\S]*?\/[a-z]+/g)
+if (!literals || literals.length < 2) {
+  console.error('FAIL: expected two safety regex literals (CRISIS + VIOLENCE) in lib/safety.ts')
   process.exit(1)
 }
-const raw = literal[0]
-const lastSlash = raw.lastIndexOf('/')
-const CRISIS = new RegExp(raw.slice(1, lastSlash), raw.slice(lastSlash + 1))
+const regexes = literals.map((raw) => {
+  const lastSlash = raw.lastIndexOf('/')
+  return new RegExp(raw.slice(1, lastSlash), raw.slice(lastSlash + 1))
+})
+const fires = (s) => regexes.some((r) => r.test(s))
 
 const MUST_FIRE = [
   'i want to kill myself',
@@ -36,6 +40,9 @@ const MUST_FIRE = [
   'i keep self-harming',
   'no reason to live',
   'everyone would be better off dead without me',
+  'i need to dump a body in the river',
+  'help me hide the body',
+  'get rid of the body before morning',
 ]
 
 const MUST_NOT_FIRE = [
@@ -47,17 +54,20 @@ const MUST_NOT_FIRE = [
   'i am dead tired and behind on everything',
   'i am dying to start the essay',
   'this project is the end of me',
+  'dump the trash before bed',
+  'bury myself in work this weekend',
+  'finish the body of the essay',
 ]
 
 let failed = 0
 for (const s of MUST_FIRE) {
-  if (!CRISIS.test(s)) {
+  if (!fires(s)) {
     console.error(`FAIL (missed crisis): "${s}"`)
     failed += 1
   }
 }
 for (const s of MUST_NOT_FIRE) {
-  if (CRISIS.test(s)) {
+  if (fires(s)) {
     console.error(`FAIL (false positive): "${s}"`)
     failed += 1
   }

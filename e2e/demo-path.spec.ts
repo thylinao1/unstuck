@@ -90,8 +90,9 @@ test('a dump with crisis content offers support instead of a task', async ({ pag
     .fill("i can't do this anymore and i don't want to be alive\nemail the landlord about the leak")
   await page.getByRole('button', { name: /begin/i }).click()
 
-  await expect(page.getByRole('heading', { name: 'First, you.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'First, this.' })).toBeVisible()
   await expect(page.getByText('988')).toBeVisible()
+  await expect(page.getByText('911')).toBeVisible()
   // The crisis is not rendered as a focus card with a momentum meter.
   await expect(page.getByText('From your dump')).toHaveCount(0)
 })

@@ -34,6 +34,9 @@ export interface TriageItem {
   eventStart?: string
   /** Optional local end; when absent the calendar event defaults to one hour. */
   eventEnd?: string
+  /** A short 2 to 4 word name for the event, shown on the "Scheduled" row and
+   *  used as the calendar entry's title. Only set when eventStart is set. */
+  eventTitle?: string
 }
 
 /** What the client sends to POST /api/triage. */

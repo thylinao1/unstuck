@@ -36,6 +36,7 @@ const claudeOutputSchema = z.object({
         biggerWhy: z.string().min(1).max(240).optional(),
         eventStart: z.string().min(10).max(40).optional(),
         eventEnd: z.string().min(10).max(40).optional(),
+        eventTitle: z.string().min(1).max(60).optional(),
       }),
     )
     .max(MAX_ITEMS),
@@ -55,10 +56,10 @@ A user gives you a messy "brain dump" of everything on their mind. Your job:
 - Set "priority" 0-100: higher for anything time-sensitive, blocking, or anxiety-driving.
 - Write "why": one short line (under 14 words) on why THIS step helps. Use a real reason from psychology or plain common sense. Never restate the action. Never be preachy.
 - Also write "biggerAction": a more substantial single step for when the user has energy and time, about 10 to 15 minutes. It is still ONE concrete step, more momentum than the tiny first step, never the whole task. Add "biggerMinutes" (10 to 15) and "biggerWhy" (one short line) for it.
-- SCHEDULED EVENTS: ONLY if an item is an appointment, meeting, call, or event at a SPECIFIC CLOCK TIME (for example "dentist at 3pm", "call mum Friday at 6", "meeting tomorrow 10am"), set "eventStart" to the resolved LOCAL start as ISO 8601 with NO timezone, like "2026-06-09T15:00". Resolve "today", "tomorrow", and weekday names against the user's current local time given in the user message. Add "eventEnd" only if a clear end time is stated. Do NOT set eventStart for a deadline or due date that has no specific time of day: a task "due Friday" or "sometime this week" is NOT an event. When in doubt, omit it.
+- SCHEDULED EVENTS: ONLY if an item is an appointment, meeting, call, or event at a SPECIFIC CLOCK TIME (for example "dentist at 3pm", "call mum Friday at 6", "meeting tomorrow 10am"), set "eventStart" to the resolved LOCAL start as ISO 8601 with NO timezone, like "2026-06-09T15:00", and set "eventTitle" to a short 2 to 4 word name for it (for example "Dentist", "Call with Sam"). Each item's time must come ONLY from a time stated for THAT item; NEVER copy one item's time onto another item. Resolve "today", "tomorrow", and weekday names against the user's current local time given in the user message. Add "eventEnd" only if a clear end time is stated. Do NOT set eventStart or eventTitle for an item with no specific clock time of its own: a "basketball game" with no time, a "due Friday" deadline, or "sometime this week" is NOT a timed event. When in doubt, omit them.
 
 Safety:
-- If the dump shows any sign of self-harm, suicidal thoughts, abuse, or a medical emergency, set "needsSupport" to true. Still triage the ordinary, non-crisis items normally. Do not turn the crisis itself into a task.
+- Set "needsSupport" to true if the dump shows ANY sign that someone could be harmed: self-harm or suicidal thoughts, intent to harm or kill another person, hiding a crime or a body, abuse, or a medical emergency. A stated plan to hurt or kill a specific person (for example "I am going to kill my neighbour tomorrow") or to dispose of or hide a body (for example "dump a body in the river") is ALWAYS needsSupport true. ERR STRONGLY TOWARD true here: set it EVEN IF the line reads as a joke, exaggeration, or absurd next to ordinary tasks, because it is far safer to offer help than to ignore real harm. This is different from everyday overwhelm hyperbole like "this deadline is killing me" or "my boss is killing me", which is NOT a crisis. Still triage the ordinary, non-harmful items normally, but NEVER turn the harmful content into a task or an action and never include it as an item. When needsSupport is true, only return the ordinary items (if any).
 
 Rules:
 - nextAction must be a tiny first step ("Open the doc and write one ugly sentence"), never the whole task ("Write the essay").
@@ -103,8 +104,9 @@ const TOOL: Anthropic.Tool = {
             biggerAction: { type: 'string', description: 'A more substantial single step (~10-15 min) for when the user has energy and time' },
             biggerMinutes: { type: 'integer', description: 'Estimated minutes for biggerAction (10-15)' },
             biggerWhy: { type: 'string', description: 'One short line on why the bigger step helps' },
-            eventStart: { type: 'string', description: 'Local ISO start (e.g. "2026-06-09T15:00") if the item has a specific date and time; omit otherwise' },
+            eventStart: { type: 'string', description: 'Local ISO start (e.g. "2026-06-09T15:00") ONLY if THIS item states its own specific clock time; omit otherwise. Never reuse another item\'s time' },
             eventEnd: { type: 'string', description: 'Local ISO end, only if clearly stated' },
+            eventTitle: { type: 'string', description: 'Short 2-4 word event name, set only when eventStart is set' },
           },
           required: ['title', 'nextAction', 'minutes', 'energy', 'priority', 'why'],
         },
@@ -244,6 +246,7 @@ export async function triageWithClaude(
           biggerWhy: it.biggerWhy,
           eventStart: it.eventStart,
           eventEnd: it.eventEnd,
+          eventTitle: it.eventTitle,
         })),
       )}`
       const refined = await runToolCall(client, SKEPTIC_PROMPT, skepticInput, 'skeptic')
@@ -267,9 +270,14 @@ export async function triageWithClaude(
           : undefined,
       biggerWhy: item.biggerWhy ? normalizeDashes(item.biggerWhy) : item.biggerWhy,
       // Only keep an event time the browser can actually parse, so a malformed
-      // model value never reaches the "Add to calendar" button.
+      // model value never reaches the "Add to calendar" button. The title and
+      // end only ride along when there is a real start.
       eventStart: validLocalIso(item.eventStart),
-      eventEnd: validLocalIso(item.eventEnd),
+      eventEnd: validLocalIso(item.eventStart) ? validLocalIso(item.eventEnd) : undefined,
+      eventTitle:
+        validLocalIso(item.eventStart) && item.eventTitle
+          ? normalizeDashes(item.eventTitle)
+          : undefined,
       id: `c${i}-${slug(item.title)}`,
     }))
 

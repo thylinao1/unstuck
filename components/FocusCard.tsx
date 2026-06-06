@@ -104,7 +104,10 @@ export function FocusCard({
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-canvas/60 px-4 py-3">
           <div className="flex flex-col">
             <span className="text-xs uppercase tracking-[0.18em] text-faint">Scheduled</span>
-            <span className="text-sm text-muted">{formatEventTime(item.eventStart as string)}</span>
+            <span className="text-sm text-muted">
+              {item.eventTitle ? `${item.eventTitle} · ` : ''}
+              {formatEventTime(item.eventStart as string)}
+            </span>
           </div>
           <button
             type="button"
