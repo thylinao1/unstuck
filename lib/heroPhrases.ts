@@ -20,7 +20,7 @@ export const HERO_PHRASES: readonly string[] = [
   'Empty your head. Leave with [one thing](u) to start.',
   'The hardest part is [starting](u). Let us make it [small](sm).',
   'A long list [freezes](blue) you. [One step](u) moves you.',
-  '[Big](caps) pile in, one small step [out](gap).',
+  '[Big](caps) pile in, one small step [out](glass).',
   'Stuck is just the moment before the [first step](u i).',
   'Quiet the [noise](blur), then take one [small](sm) step.',
   'What is the [smallest thing](u sm) you could start right now?',

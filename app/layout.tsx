@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Great_Vibes, Newsreader } from 'next/font/google'
 import './globals.css'
 
@@ -43,6 +43,20 @@ export const metadata: Metadata = {
       'Brain-dump the pile in your head. Get one calm, doable step matched to the time and energy you have right now.',
     images: ['/og.png'],
   },
+  // Make it installable to the Home Screen as a calm, full-screen mini app.
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'Unstuck', statusBarStyle: 'default' },
+  icons: {
+    icon: [{ url: '/icon-192.png', type: 'image/png', sizes: '192x192' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#f5efe3',
+  // Let the warm canvas run under the iOS status bar and home indicator when
+  // installed, so it feels like a real full-screen app.
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
