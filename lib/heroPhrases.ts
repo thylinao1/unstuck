@@ -7,12 +7,12 @@
 //
 //   u     accent underline            i     italic
 //   down  shift down + accent         up    shift up + accent
-//   sm    smaller (muted)             xs    smaller still
-//   xxs   tiny and faint              blur  blurred
+//   sm    clean sans face, sage tone  blur  blurred
 //   blue  cool blue (freeze/clear)    red   urgent red
 //   caps  UPPERCASE                   gap   extra leading space
 //   drip  blue liquid ooze            glass crystalline glass, clean sans
 //   script  ornamental flowing script (inherits ink color)
+// Nothing shrinks: emphasis is by font, color, and effect, never by size.
 export const HERO_PHRASES: readonly string[] = [
   'Overwhelm [freezes](blue) you. One [small](sm) step thaws it.',
   'Too much at once? [Start](u) with one thing.',
@@ -27,7 +27,7 @@ export const HERO_PHRASES: readonly string[] = [
   'One small step is enough to [break the ](u)[freeze](u blue).',
   'Put it all [down](down). Pick [up](up) one thing.',
   'You are not [lazy](drip), just overwhelmed. [Start ](u)[small](u sm).',
-  'Momentum is [one small step](u), repeated, [repeated](sm), [repeated](xs), [repeated](xxs).',
+  'Momentum is [one small step](u), repeated, and [repeated](sm) again.',
   'Dump the [chaos](blur). Leave with one [clear](glass) move.',
   'When everything feels [urgent](red), start with [one](script).',
   'The pile [shrinks](sm) one small step at a time.',

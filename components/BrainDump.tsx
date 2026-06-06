@@ -24,9 +24,9 @@ const HERO_STRUCT: Record<string, string> = {
   i: 'italic',
   down: 'inline-block translate-y-[0.16em]',
   up: 'inline-block -translate-y-[0.18em]',
-  sm: 'text-[0.62em]',
-  xs: 'text-[0.45em]',
-  xxs: 'text-[0.3em] opacity-50',
+  // "alt": a clean sans face in a calm sage tone, at full size. This replaces the
+  // old shrinking treatment, which read as a typo rather than a design choice.
+  sm: 'font-sans tracking-[-0.01em]',
   blur: 'inline-block text-ink/85 blur-[2px]',
   caps: 'uppercase tracking-[0.04em]',
   gap: 'ml-[1.1em]',
@@ -43,7 +43,7 @@ function heroColor(tokens: Set<string>): string {
   if (tokens.has('u') || tokens.has('i') || tokens.has('down') || tokens.has('up')) {
     return 'text-accent-deep'
   }
-  if (tokens.has('sm') || tokens.has('xs') || tokens.has('xxs')) return 'text-muted'
+  if (tokens.has('sm')) return 'text-hero-sage'
   return '' // caps / gap alone inherit the ink color
 }
 

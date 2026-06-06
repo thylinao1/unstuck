@@ -15,10 +15,11 @@
   --color-accent-deep: oklch(0.5 0.15 36);
   --color-accent-soft: oklch(0.93 0.045 52);
 
-  /* Two semantic cool/hot accents used only in the hero phrases: blue reads as
-     "freeze / cold / clear", red as "urgent". Deliberate, not decorative. */
+  /* Accent colors used only in the hero phrases: blue reads as "freeze / cold /
+     clear", red as "urgent", sage as a calm "small / growing" tone. Deliberate. */
   --color-hero-blue: oklch(0.55 0.13 250);
   --color-hero-red: oklch(0.55 0.19 25);
+  --color-hero-sage: oklch(0.58 0.066 168);
 
   --font-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
@@ -136,9 +137,31 @@ body::before {
     0 0 30px -6px oklch(0.6 0.15 40 / 0.4);
 }
 
-/* Soft halo on the idle Speak button, the primary voice-first input. */
+/* The idle Speak button radiates: a steady warm halo plus a soft ring that
+   expands outward and fades, so the primary voice-first input quietly pulls the
+   eye. Reduced motion keeps the steady halo and drops the pulse. */
 .speak-glow {
-  box-shadow: 0 0 16px -3px oklch(0.6 0.15 40 / 0.3);
+  box-shadow:
+    0 0 26px -2px oklch(0.62 0.15 42 / 0.45),
+    0 0 64px -12px oklch(0.62 0.15 42 / 0.32);
+  animation: speak-radiate 2.6s var(--ease-soft) infinite;
+}
+@keyframes speak-radiate {
+  0% {
+    box-shadow:
+      0 0 0 0 oklch(0.62 0.15 42 / 0.4),
+      0 0 24px -4px oklch(0.62 0.15 42 / 0.42);
+  }
+  70% {
+    box-shadow:
+      0 0 0 18px oklch(0.62 0.15 42 / 0),
+      0 0 44px -2px oklch(0.62 0.15 42 / 0.5);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 oklch(0.62 0.15 42 / 0),
+      0 0 24px -4px oklch(0.62 0.15 42 / 0.42);
+  }
 }
 
 /* Calm celebration when the head is finally cleared. */
@@ -336,7 +359,8 @@ body::before {
   .celebrate,
   .done-em,
   .value-pop,
-  .hero-drip {
+  .hero-drip,
+  .speak-glow {
     animation: none;
   }
   *,
