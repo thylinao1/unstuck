@@ -2,7 +2,7 @@
 //
 // Enough to stop a naive script from draining the Anthropic key on the public,
 // unauthenticated /api/triage endpoint. State is per serverless instance and
-// resets on cold start — acceptable for this app. For real scale, swap the Map
+// resets on cold start, which is acceptable for this app. For real scale, swap the Map
 // for @upstash/ratelimit + @vercel/kv behind the same rateLimit() signature.
 
 interface Bucket {

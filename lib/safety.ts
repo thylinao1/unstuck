@@ -1,6 +1,6 @@
 // Crisis detection for the DETERMINISTIC FALLBACK PATH ONLY.
 //
-// When the AI runs, the model's needsSupport flag is authoritative — it reasons
+// When the AI runs, the model's needsSupport flag is authoritative. It reasons
 // about context and tells "this deadline is killing me" (hyperbole) apart from
 // "I want to kill myself" (crisis), which no regex can. This net only runs when
 // the AI is unavailable (no key / error / rate-limit), so the degraded path is

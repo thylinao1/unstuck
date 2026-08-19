@@ -1,4 +1,4 @@
-// Deterministic safety-net test — no API key, no network, runs in CI on every
+// Deterministic safety-net test. No API key, no network, runs in CI on every
 // push. It reads the ACTUAL crisis regex out of lib/safety.ts (so it can't drift
 // from the source) and asserts two-sided correctness:
 //   - unambiguous crisis phrases, incl. every form of "suicide", DO fire

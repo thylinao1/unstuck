@@ -21,7 +21,7 @@ export function recordCheckIn(task: string): void {
   try {
     window.localStorage.setItem(KEY, JSON.stringify({ task, at: Date.now() } satisfies CheckIn))
   } catch {
-    // storage disabled — the check-in simply won't fire, which is fine.
+    // Storage disabled. The check-in simply won't fire, which is fine.
   }
 }
 

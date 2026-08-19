@@ -1,12 +1,12 @@
-// Shared types — the canonical contract between the UI and the triage API.
-// WS-A (AI core) and WS-B (frontend) both code against these. Do not redefine
-// the shapes elsewhere; import from here.
+// Shared types: the canonical contract between the UI and the triage API.
+// The AI core and the frontend both code against these. Do not redefine the
+// shapes elsewhere; import from here.
 
 export type Energy = 'low' | 'med' | 'high'
 
 /** One thing pulled out of the brain dump, shrunk to a doable next step. */
 export interface TriageItem {
-  /** Stable id (deterministic — safe as a React key and for dedupe). */
+  /** Stable id (deterministic, so it is safe as a React key and for dedupe). */
   id: string
   /** The original thing the user wrote. */
   title: string
@@ -54,8 +54,8 @@ export interface TriageRequest {
 /** What POST /api/triage returns. */
 export interface TriageResponse {
   items: TriageItem[]
-  /** How the items were produced — lets the demo prove the AI is real, and
-   *  lets us show graceful degradation when the AI is unavailable. */
+  /** How the items were produced. Lets the demo prove the AI is real, and lets
+   *  us show graceful degradation when the AI is unavailable. */
   source: 'ai' | 'fallback'
   /** True when the dump shows signs of self-harm, crisis, or a medical
    *  emergency. The UI then offers calm support instead of gamifying it. */

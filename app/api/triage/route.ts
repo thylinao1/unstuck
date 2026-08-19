@@ -68,7 +68,7 @@ export async function POST(request: Request): Promise<Response> {
   // regex is a backstop for the explicit phrases the model occasionally misses
   // (e.g. "thinking about hurting myself"). The regex no longer fires on common
   // hyperbole ("killing me", "can't go on"), so OR-ing it back does not
-  // reintroduce the false positives — it only closes the model's misses.
+  // reintroduce the false positives; it only closes the model's misses.
   const support = (ai?.needsSupport ?? false) || looksLikeCrisis(brainDump)
 
   // One structured line per request → visible in Vercel Runtime Logs (fallback

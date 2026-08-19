@@ -9,10 +9,11 @@ export function capitalizeFirst(s: string): string {
   return first.toUpperCase() + s.slice(1)
 }
 
-// Keep the Quiet Luxury voice consistent even in AI-generated text: en and em
-// dashes are not used anywhere. A dash between numbers becomes "to" ("10–15" ->
-// "10 to 15"); any other en/em dash becomes a comma. Ordinary hyphens (9-5,
-// cover-letter) are left untouched.
+// House typography for model-written copy: the interface uses no en or em dashes
+// anywhere. One sitting between two numbers becomes "to", so a range renders as
+// "10 to 15"; anywhere else it becomes a comma. Ordinary hyphens (9-5,
+// cover-letter) are left untouched. The character classes below are the only
+// place those code points appear in the codebase.
 export function normalizeDashes(s: string): string {
   return s
     .replace(/(\d)\s*[–—]\s*(\d)/g, '$1 to $2')

@@ -3,8 +3,8 @@
 import { z } from 'zod'
 import type { TriageItem } from './types'
 
-// Local-first persistence. No accounts, no backend — the session lives in the
-// browser so judges hit zero signup friction and the app works offline.
+// Local-first persistence. No accounts and no backend: the session lives in the
+// browser, so judges hit zero signup friction and the app works offline.
 //
 // The stored blob is fully untrusted input that runs on every page load, so it
 // is zod-validated before use (a stale or hand-edited shape returns null and the
@@ -12,7 +12,7 @@ import type { TriageItem } from './types'
 // timestamp so an old session doesn't hijack the landing hero days later.
 
 const KEY = 'unstuck:session:v1'
-const TTL_MS = 12 * 60 * 60 * 1000 // 12h — after this, start fresh on the hero
+const TTL_MS = 12 * 60 * 60 * 1000 // 12h; after this, start fresh on the hero
 
 const energySchema = z.enum(['low', 'med', 'high'])
 
@@ -69,7 +69,7 @@ export function saveSession(session: StoredSession): void {
   try {
     window.localStorage.setItem(KEY, JSON.stringify({ ...session, savedAt: Date.now() }))
   } catch {
-    // storage full or disabled — non-fatal, the session just won't persist.
+    // Storage full or disabled. Non-fatal, the session just won't persist.
   }
 }
 

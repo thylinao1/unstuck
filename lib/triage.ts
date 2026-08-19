@@ -5,7 +5,7 @@ import { capitalizeFirst, normalizeDashes } from './text'
 
 // Claude-powered triage. Returns null on ANY problem (no key, API error,
 // malformed output) so the caller falls back to the deterministic engine and
-// the demo never breaks. Server-side only — the key is read from the env here
+// the demo never breaks. Server-side only: the key is read from the env here
 // and never reaches the client.
 //
 // Two passes: a draft triage, then a "skeptic" that challenges each step before
